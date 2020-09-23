@@ -1,10 +1,10 @@
 {
   "appName": {
-    "message": "日本語単語発見。あなたの語彙を増強します",
+    "message": "英語単語発見。あなたの語彙を増強します",
     "description": "The title of the application, displayed in the web store."
   },
   "appDesc": {
-    "message": "Webページ上のまれな日語の辞書の単語や熟語をハイライトします。日語学習を容易にし、あなたの語彙を増強します。",
+    "message": "Webページ上のまれな英語の辞書の単語や熟語をハイライトします。英語学習を容易にし、あなたの語彙を増強します。",
     "description": "The description of the application, displayed in the web store."
   },
   "menuItem": {
@@ -16,11 +16,11 @@
   },
   "rateInfo1": {
     "message": "ハイライトされていません",
-    "description": "1-st part of \"Not highlighting 100 most common Japanese words\" sentence"
+    "description": "1-st part of \"Not highlighting 100 most common English words\" sentence"
   },
   "rateInfo2": {
     "message": "最も一般的な日単語。",
-    "description": "2-nd part of \"Not highlighting 100 most common Japanese words\" sentence"
+    "description": "2-nd part of \"Not highlighting 100 most common English words\" sentence"
   },
   "adjust": {
     "message": "詳細設定..."

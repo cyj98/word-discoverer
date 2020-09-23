@@ -1,10 +1,10 @@
 {
   "appName": {
-    "message": "日语单词发现者：扩大您的词汇",
+    "message": "英语单词发现者：扩大您的词汇",
     "description": "The title of the application, displayed in the web store."
   },
   "appDesc": {
-    "message": "突出显示网页上罕见的日语字典词汇和惯用语。促进日语语言学习并扩大词汇量。",
+    "message": "突出显示网页上罕见的英语字典词汇和惯用语。促进英语语言学习并扩大词汇量。",
     "description": "The description of the application, displayed in the web store."
   },
   "menuItem": {
@@ -12,14 +12,14 @@
     "description": "Text in context menu"
   },
   "rateTranslateDbg": {
-    "message": "不突出显示100 最常用的日语单词"
+    "message": "不突出显示100 最常用的英语单词"
   },
   "rateInfo1": {
     "message": "不突出显示",
     "description": "1-st part of \"Not highlighting 100 most common English words\" sentence"
   },
   "rateInfo2": {
-    "message": "最常用的日语单词。",
+    "message": "最常用的英语单词。",
     "description": "2-nd part of \"Not highlighting 100 most common English words\" sentence"
   },
   "adjust": {

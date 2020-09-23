@@ -1,105 +1,115 @@
-import { sync_if_needed } from './lib/common_lib'
+import browser from 'webextension-polyfill';
+import { syncIfNeeded } from './lib/common_lib';
 
-var list_section_names = { 'jhBlackList': 'blackListSection', 'jhWhiteList': 'whiteListSection', 'jhUserVocabulary': 'vocabularySection' };
+const listSectionNames = {
+  wdBlackList: 'black-list-section',
+  wdWhiteList: 'white-list-section',
+  wdUserVocabulary: 'vocabulary-section',
+};
 
-function process_delete_simple(list_name, key) {
-    chrome.storage.local.get([list_name], result => {
-        var user_list = result[list_name];
-        delete user_list[key];
-        chrome.storage.local.set({ [list_name]: user_list });
-        show_user_list(list_name, user_list);
+function processDeleteSimple(listName, key) {
+  browser.storage.local.get([listName]).then((result) => {
+    const userList = result[listName];
+    delete userList[key];
+    browser.storage.local.set({ [listName]: userList });
+    showUserList(listName, userList);
+  });
+}
+
+function processDeleteVocabEntry(key) {
+  browser.storage.local
+    .get(['wdUserVocabulary', 'wdUserVocabAdded', 'wdUserVocabDeleted'])
+    .then((result) => {
+      const { wdUserVocabulary, wdUserVocabAdded, wdUserVocabDeleted } = result;
+      const newState = { wdUserVocabulary };
+      delete wdUserVocabulary[key];
+      if (typeof wdUserVocabAdded !== 'undefined') {
+        delete wdUserVocabAdded[key];
+        newState.wdUserVocabAdded = wdUserVocabAdded;
+      }
+      if (typeof wdUserVocabDeleted !== 'undefined') {
+        wdUserVocabDeleted[key] = 1;
+        newState.wdUserVocabDeleted = wdUserVocabDeleted;
+      }
+      browser.storage.local.set(newState).then(() => {
+        syncIfNeeded();
+      });
+      showUserList('wdUserVocabulary', wdUserVocabulary);
     });
 }
 
-function process_delete_vocab_entry(key) {
-    chrome.storage.local.get(['jhUserVocabulary', 'wd_user_vocab_added', 'wd_user_vocab_deleted'], result => {
-        var user_vocabulary = result.jhUserVocabulary;
-        var wd_user_vocab_added = result.wd_user_vocab_added;
-        var wd_user_vocab_deleted = result.wd_user_vocab_deleted;
-        var new_state = { 'jhUserVocabulary': user_vocabulary };
-        delete user_vocabulary[key];
-        if (typeof wd_user_vocab_added !== 'undefined') {
-            delete wd_user_vocab_added[key];
-            new_state['wd_user_vocab_added'] = wd_user_vocab_added;
-        }
-        if (typeof wd_user_vocab_deleted !== 'undefined') {
-            wd_user_vocab_deleted[key] = 1;
-            new_state['wd_user_vocab_deleted'] = wd_user_vocab_deleted;
-        }
-        chrome.storage.local.set(new_state, sync_if_needed);
-        show_user_list('jhUserVocabulary', user_vocabulary);
+function createButton(listName, text) {
+  const result = document.createElement('button');
+  result.setAttribute('class', 'delete-button');
+  result.expression_text = text;
+  if (listName === 'wdUserVocabulary') {
+    result.addEventListener('click', function deleteVocabEntry() {
+      processDeleteVocabEntry(this.expression_text);
     });
-}
-
-function create_button(list_name, text) {
-    var result = document.createElement("button");
-    result.setAttribute("class", "deleteButton");
-    result.expression_text = text;
-    if (list_name === 'jhUserVocabulary') {
-        result.addEventListener("click", function () { process_delete_vocab_entry(this.expression_text); });
-    } else {
-        result.addEventListener("click", function () { process_delete_simple(list_name, this.expression_text); });
-    }
-    var img = document.createElement("img");
-    img.setAttribute("src", "../images/delete.png");
-    result.appendChild(img);
-    return result;
-}
-
-function create_label(text) {
-    var result = document.createElement("span");
-    result.setAttribute("class", "wordText");
-    result.textContent = text;
-    return result;
-}
-
-
-function show_user_list(list_name, user_list) {
-    const keys = []
-    for (var key in user_list) {
-        if (Object.prototype.hasOwnProperty.call(user_list, key)) {
-            keys.push(key);
-        }
-    }
-    var section_name = list_section_names[list_name];
-    var div_element = document.getElementById(section_name);
-    while (div_element.firstChild) {
-        div_element.removeChild(div_element.firstChild);
-    }
-    if (!keys.length) {
-        div_element.appendChild(create_label(chrome.i18n.getMessage("emptyListError")));
-        div_element.appendChild(document.createElement("br"));
-        return;
-    }
-    for (var i = 0; i < keys.length; i++) {
-        key = keys[i];
-        if (key.indexOf("'") !== -1 || key.indexOf("\"") !== -1) {
-            continue;
-        }
-        div_element.appendChild(create_button(list_name, key));
-        div_element.appendChild(create_label(key));
-        div_element.appendChild(document.createElement("br"));
-    }
-}
-
-
-function process_display() {
-    // TODO replace this clumsy logic by adding a special "data-list-name" attribute and renaming all 3 tags to "userListSection"
-    let list_name = undefined;
-    if (document.getElementById("blackListSection")) {
-        list_name = "jhBlackList";
-    } else if (document.getElementById("whiteListSection")) {
-        list_name = "jhWhiteList";
-    } else {
-        list_name = "jhUserVocabulary";
-    }
-
-    chrome.storage.local.get([list_name], result => {
-        var user_list = result[list_name];
-        show_user_list(list_name, user_list);
+  } else {
+    result.addEventListener('click', function deleteSimple() {
+      processDeleteSimple(listName, this.expression_text);
     });
+  }
+  const img = document.createElement('img');
+  img.setAttribute('src', '../images/delete.png');
+  result.appendChild(img);
+  return result;
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    process_display();
+function createLabel(text) {
+  const result = document.createElement('span');
+  result.setAttribute('class', 'word-text');
+  result.textContent = text;
+  return result;
+}
+
+function showUserList(listName, userList) {
+  const keys = [];
+  // for (const key in userList) {
+  Object.keys(userList).forEach((key) => {
+    if (Object.prototype.hasOwnProperty.call(userList, key)) {
+      keys.push(key);
+    }
+  });
+  const sectionName = listSectionNames[listName];
+  const divElement = document.getElementById(sectionName);
+  while (divElement.firstChild) {
+    divElement.removeChild(divElement.firstChild);
+  }
+  if (!keys.length) {
+    divElement.appendChild(createLabel(browser.i18n.getMessage('emptyListError')));
+    divElement.appendChild(document.createElement('br'));
+    return;
+  }
+  keys.forEach((key) => {
+    if (key.indexOf("'") !== -1 || key.indexOf('"') !== -1) {
+      return;
+    }
+    divElement.appendChild(createButton(listName, key));
+    divElement.appendChild(createLabel(key));
+    divElement.appendChild(document.createElement('br'));
+  });
+}
+
+function processDisplay() {
+  // TODO replace this clumsy logic by adding a special
+  // "data-list-name" attribute and renaming all 3 tags to "userListSection"
+  let listName;
+  if (document.getElementById('black-list-section')) {
+    listName = 'wdBlackList';
+  } else if (document.getElementById('white-list-section')) {
+    listName = 'wdWhiteList';
+  } else {
+    listName = 'wdUserVocabulary';
+  }
+
+  browser.storage.local.get([listName]).then((result) => {
+    const userList = result[listName];
+    showUserList(listName, userList);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  processDisplay();
 });

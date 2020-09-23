@@ -14,11 +14,11 @@
     input[type="file"] {
         display: none;
     }
-    .infoMsg {
+    .info-msg {
         padding: 4px;
         font-size: 16px;
     }
-    .longButton {
+    .long-button {
         width: 180px;
         background-color: #4CAF50; /* Green */
         border: 1px solid white;
@@ -32,7 +32,7 @@
         transition-duration: 0.4s;
         cursor: pointer;
     }
-    .longButton:hover {
+    .long-button:hover {
         background-color: #3e8e41;
     }
     </style>
@@ -42,17 +42,17 @@
   </head>
   <body>
     <fieldset>
-    <span class="infoMsg">__MSG_importInfo__</span>
+    <span class="info-msg">__MSG_importInfo__</span>
     <br>
     <br>
-    <label for="doLoadVocab" class="longButton">__MSG_selectFile__</label>
-    <input id="doLoadVocab" type="file"/>
-    <span class="infoMsg" id="fnamePreview"></span>
+    <label for="do-load-vocab" class="long-button">__MSG_selectFile__</label>
+    <input id="do-load-vocab" type="file"/>
+    <span class="info-msg" id="frame-preview"></span>
     <br>
-    <button id="vocabSubmit" class="longButton">OK</button>
+    <button id="vocab-submit" class="long-button">OK</button>
     <br>
-    <span class="infoMsg" id="addedInfo"></span><br>
-    <span class="infoMsg" id="skippedInfo"></span><br>
+    <span class="info-msg" id="added-info"></span><br>
+    <span class="info-msg" id="skipped-info"></span><br>
     </fieldset>
   </body>
 </html>

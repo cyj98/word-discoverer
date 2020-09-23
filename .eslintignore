@@ -5,6 +5,4 @@
 /dist-chrome
 
 src/scripts/lib/mecab.js
-src/scripts/lib/mecab_worker.js
-
-gapi.js
+src/scripts/lib/FileSaver.js

@@ -1,76 +1,77 @@
+import browser from 'webextension-polyfill';
+import { syncIfNeeded, localizeHtmlPage } from './lib/common_lib';
 
-import { sync_if_needed, localizeHtmlPage } from './lib/common_lib'
-
-function parse_vocabulary(text) {
-    var lines = text.split('\n');
-    var found = [];
-    for (var i = 0; i < lines.length; ++i) {
-        var word = lines[i];
-        if (i + 1 === lines.length && word.length <= 1)
-            break;
-        if (word.slice(-1) === '\r') {
-            word = word.slice(0, -1);
-        }
-        found.push(word);
+function parseVocabulary(text) {
+  const lines = text.split('\n');
+  const found = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    let word = lines[i];
+    if (i + 1 === lines.length && word.length <= 1) break;
+    if (word.slice(-1) === '\r') {
+      word = word.slice(0, -1);
     }
-    return found;
+    found.push(word);
+  }
+  return found;
 }
 
-function add_new_words(new_words) {
-    chrome.storage.local.get(['jhUserVocabulary', 'wd_user_vocab_added', 'wd_user_vocab_deleted'], result => {
-        var user_vocabulary = result.jhUserVocabulary;
-        var wd_user_vocab_added = result.wd_user_vocab_added;
-        var wd_user_vocab_deleted = result.wd_user_vocab_deleted;
-        var num_added = 0;
-        var new_state = { "jhUserVocabulary": user_vocabulary };
-        for (var i = 0; i < new_words.length; ++i) {
-            var word = new_words[i];
-            if (!(Object.prototype.hasOwnProperty.call(user_vocabulary, word))) {
-                user_vocabulary[word] = 1;
-                ++num_added;
-                if (typeof wd_user_vocab_added !== 'undefined') {
-                    wd_user_vocab_added[word] = 1;
-                    new_state['wd_user_vocab_added'] = wd_user_vocab_added;
-                }
-                if (typeof wd_user_vocab_deleted !== 'undefined') {
-                    delete wd_user_vocab_deleted[word];
-                    new_state['wd_user_vocab_deleted'] = wd_user_vocab_deleted;
-                }
-            }
+function addNewWords(newWords) {
+  browser.storage.local
+    .get(['wdUserVocabulary', 'wdUserVocabAdded', 'wdUserVocabDeleted'])
+    .then((result) => {
+      const { wdUserVocabulary, wdUserVocabAdded, wdUserVocabDeleted } = result;
+      let numAdded = 0;
+      const newState = { wdUserVocabulary };
+      for (let i = 0; i < newWords.length; i += 1) {
+        const word = newWords[i];
+        if (!Object.prototype.hasOwnProperty.call(wdUserVocabulary, word)) {
+          wdUserVocabulary[word] = 1;
+          numAdded += 1;
+          if (typeof wdUserVocabAdded !== 'undefined') {
+            wdUserVocabAdded[word] = 1;
+            newState.wdUserVocabAdded = wdUserVocabAdded;
+          }
+          if (typeof wdUserVocabDeleted !== 'undefined') {
+            delete wdUserVocabDeleted[word];
+            newState.wdUserVocabDeleted = wdUserVocabDeleted;
+          }
         }
-        if (num_added) {
-            chrome.storage.local.set(new_state, sync_if_needed);
-        }
-        var num_skipped = new_words.length - num_added;
-        document.getElementById("addedInfo").textContent = "Added " + num_added + " new words.";
-        document.getElementById("skippedInfo").textContent = "Skipped " + num_skipped + " existing words.";
+      }
+      if (numAdded) {
+        browser.storage.local.set(newState).then(() => {
+          syncIfNeeded();
+        });
+      }
+      const numSkipped = newWords.length - numAdded;
+      document.getElementById('added-info').textContent = `Added ${numAdded} new words.`;
+      document.getElementById('skipped-info').textContent = `Skipped ${numSkipped} existing words.`;
     });
 }
 
-function process_change() {
-    var inputElem = document.getElementById("doLoadVocab");
-    var baseName = inputElem.files[0].name;
-    document.getElementById("fnamePreview").textContent = baseName;
+function processChange() {
+  const inputElem = document.getElementById('do-load-vocab');
+  const baseName = inputElem.files[0].name;
+  document.getElementById('frame-preview').textContent = baseName;
 }
 
-function process_submit() {
-    //TODO add a radio button with two options: 1. merge vocabulary [default]; 2. replace vocabulary
-    var inputElem = document.getElementById("doLoadVocab");
-    var file = inputElem.files[0];
-    var reader = new FileReader();
-    reader.onload = () => {
-        var new_words = parse_vocabulary(reader.result);
-        add_new_words(new_words);
-    }
-    reader.readAsText(file);
+function processSubmit() {
+  // TODO add a radio button with two options: 1. merge vocabulary [default]; 2. replace vocabulary
+  const inputElem = document.getElementById('do-load-vocab');
+  const file = inputElem.files[0];
+  const reader = new FileReader();
+  reader.onload = () => {
+    const newWords = parseVocabulary(reader.result);
+    addNewWords(newWords);
+  };
+  reader.readAsText(file);
 }
 
-function init_controls() {
-    window.onload = () => {
-        localizeHtmlPage();
-        document.getElementById("vocabSubmit").addEventListener("click", process_submit);
-        document.getElementById("doLoadVocab").addEventListener("change", process_change);
-    }
+function initControls() {
+  window.onload = () => {
+    localizeHtmlPage();
+    document.getElementById('vocab-submit').addEventListener('click', processSubmit);
+    document.getElementById('do-load-vocab').addEventListener('change', processChange);
+  };
 }
 
-init_controls();
+initControls();

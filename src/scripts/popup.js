@@ -1,175 +1,202 @@
-import { request_unhighlight, add_lexeme, localizeHtmlPage } from './lib/common_lib'
+import browser from 'webextension-polyfill';
+import { requestUnhighlight, addLexeme, localizeHtmlPage } from './lib/common_lib';
 
 // var dict_size = null;
-var enabled_mode = true;
+let enabledMode = true;
 
-function display_mode() {
-    chrome.tabs.getSelected(null, tab => {
-        var url = new URL(tab.url);
-        var domain = url.hostname;
-        document.getElementById("addHostName").textContent = domain;
-        if (enabled_mode) {
-            document.getElementById("modeHeader").textContent = chrome.i18n.getMessage("enabledDescription");
-            document.getElementById("addToListLabel").textContent = chrome.i18n.getMessage("addSkippedLabel");
-            document.getElementById("addToListLabel").href = chrome.extension.getURL('../html/black_list.html');
-            chrome.storage.local.get(["jhBlackList",], result => {
-                var black_list = result.jhBlackList;
-                document.getElementById("addToList").checked = Object.prototype.hasOwnProperty.call(black_list, domain);
-            });
-        } else {
-            document.getElementById("modeHeader").textContent = chrome.i18n.getMessage("disabledDescription");
-            document.getElementById("addToListLabel").textContent = chrome.i18n.getMessage("addFavoritesLabel");
-            document.getElementById("addToListLabel").href = chrome.extension.getURL('../html/white_list.html');
-            chrome.storage.local.get(["jhWhiteList",], result => {
-                var white_list = result.jhWhiteList;
-                document.getElementById("addToList").checked = Object.prototype.hasOwnProperty.call(white_list, domain);
-            });
-        }
-    });
-}
-
-function process_checkbox() {
-    const checkboxElem = document.getElementById("addToList");
-    chrome.tabs.getSelected(null, tab => {
-        var url = new URL(tab.url);
-        var domain = url.hostname;
-        document.getElementById("addHostName").textContent = domain;
-        var list_name = enabled_mode ? "jhBlackList" : "jhWhiteList";
-        chrome.storage.local.get([list_name], result => {
-            var site_list = result[list_name];
-            if (checkboxElem.checked) {
-                site_list[domain] = 1;
-            } else {
-                delete site_list[domain];
-            }
-            chrome.storage.local.set({ [list_name]: site_list }, () => {
-                display_mode();
-            });
-        });
-    });
-}
-
-
-function process_mode_switch() {
-    enabled_mode = !enabled_mode;
-    chrome.storage.local.set({ "jhIsEnabled": enabled_mode });
-    display_mode();
-}
-
-function process_show() {
-    chrome.tabs.create({ 'url': chrome.extension.getURL('../html/display.html') });
-}
-
-function process_help() {
-    chrome.tabs.create({ 'url': chrome.extension.getURL('../html/help.html') });
-}
-
-function process_adjust() {
-    chrome.tabs.create({ 'url': chrome.extension.getURL('../html/options.html') });
-}
-
-function display_vocabulary_size() {
-    chrome.storage.local.get(['jhUserVocabulary'], result => {
-        var jhUserVocabulary = result.jhUserVocabulary;
-        var vocab_size = Object.keys(jhUserVocabulary).length;
-        document.getElementById("vocabIndicator").textContent = vocab_size;
-    });
-}
-
-
-function popup_handle_add_result(report, lemma) {
-    if (report === "ok") {
-        request_unhighlight(lemma);
-        display_vocabulary_size();
-        document.getElementById('addText').value = "";
-        document.getElementById('addOpResult').textContent = chrome.i18n.getMessage("addSuccess");
-    } else if (report === "exists") {
-        document.getElementById('addOpResult').textContent = chrome.i18n.getMessage("addErrorDupp");
+function displayMode() {
+  browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
+    const url = new URL(tabs[0].url);
+    const domain = url.hostname;
+    document.getElementById('add-host-name').textContent = domain;
+    if (enabledMode) {
+      document.getElementById('mode-header').textContent = browser.i18n.getMessage(
+        'enabledDescription',
+      );
+      document.getElementById('add-to-list-label').textContent = browser.i18n.getMessage(
+        'addSkippedLabel',
+      );
+      document.getElementById('add-to-list-label').href = browser.extension.getURL(
+        '../html/black_list.html',
+      );
+      browser.storage.local.get(['wdBlackList']).then((result) => {
+        const blackList = result.wdBlackList;
+        document.getElementById('add-to-list').checked = Object.prototype.hasOwnProperty.call(
+          blackList,
+          domain,
+        );
+      });
     } else {
-        document.getElementById('addOpResult').textContent = chrome.i18n.getMessage("addErrorBad");
+      document.getElementById('mode-header').textContent = browser.i18n.getMessage(
+        'disabledDescription',
+      );
+      document.getElementById('add-to-list-label').textContent = browser.i18n.getMessage(
+        'addFavoritesLabel',
+      );
+      document.getElementById('add-to-list-label').href = browser.extension.getURL(
+        '../html/white_list.html',
+      );
+      browser.storage.local.get(['wdWhiteList']).then((result) => {
+        const whiteList = result.wdWhiteList;
+        document.getElementById('add-to-list').checked = Object.prototype.hasOwnProperty.call(
+          whiteList,
+          domain,
+        );
+      });
     }
+  });
 }
 
-function process_add_word() {
-    const lexeme = document.getElementById('addText').value;
-    if (lexeme === 'dev-mode-on') {
-        chrome.storage.local.set({ "wd_developer_mode": true });
-        document.getElementById('addText').value = "";
-        return;
-    }
-    if (lexeme === 'dev-mode-off') {
-        chrome.storage.local.set({ "wd_developer_mode": false });
-        document.getElementById('addText').value = "";
-        return;
-    }
-    add_lexeme(lexeme, popup_handle_add_result);
-}
-
-function process_rate(increase) {
-    chrome.storage.local.get(['jhMinimunRank'], result => {
-        let minimunRank = result.jhMinimunRank + increase;
-        // minimunRank += increase;
-        // minimunRank = Math.min(100, Math.max(0, show_percents));
-        // display_percents(minimunRank);
-        document.getElementById("countIndicator").textContent = minimunRank;
-        chrome.storage.local.set({ "jhMinimunRank": minimunRank });
+// TODO: check this two display_mode()?
+function processCheckbox() {
+  const checkboxElem = document.getElementById('add-to-list');
+  const listName = enabledMode ? 'wdBlackList' : 'wdWhiteList';
+  let domain;
+  browser.tabs
+    .query({ active: true, currentWindow: true })
+    .then((tabs) => {
+      const url = new URL(tabs[0].url);
+      domain = url.hostname;
+      document.getElementById('add-host-name').textContent = domain;
+      return browser.storage.local.get([listName]);
+    })
+    .then((result) => {
+      const siteList = result[listName];
+      if (checkboxElem.checked) {
+        siteList[domain] = 1;
+      } else {
+        delete siteList[domain];
+      }
+      return browser.storage.local.set({ [listName]: siteList });
+    })
+    .then(() => {
+      displayMode();
     });
 }
 
-function process_rate_m100() {
-    process_rate(-100);
+function processModeSwitch() {
+  enabledMode = !enabledMode;
+  browser.storage.local.set({ wdIsEnabled: enabledMode });
+  displayMode();
 }
-function process_rate_m1000() {
-    process_rate(-1000);
+
+function processShow() {
+  browser.tabs.create({
+    url: browser.extension.getURL('../html/display.html'),
+  });
 }
-function process_rate_p100() {
-    process_rate(100);
+
+function processHelp() {
+  browser.tabs.create({ url: browser.extension.getURL('../html/help.html') });
 }
-function process_rate_p1000() {
-    process_rate(1000);
+
+function processAdjust() {
+  browser.tabs.create({
+    url: browser.extension.getURL('../html/options.html'),
+  });
+}
+
+function displayVocabularySize() {
+  browser.storage.local.get(['wdUserVocabulary']).then((result) => {
+    const { wdUserVocabulary } = result;
+    const vocabSize = Object.keys(wdUserVocabulary).length;
+    document.getElementById('vocab-indicator').textContent = vocabSize;
+  });
+}
+
+function popupHandleAddResult(report, lemma) {
+  if (report === 'ok') {
+    requestUnhighlight(lemma);
+    displayVocabularySize();
+    document.getElementById('add-text').value = '';
+    document.getElementById('add-op-result').textContent = browser.i18n.getMessage('addSuccess');
+  } else if (report === 'exists') {
+    document.getElementById('add-op-result').textContent = browser.i18n.getMessage('addErrorDupp');
+  } else {
+    document.getElementById('add-op-result').textContent = browser.i18n.getMessage('addErrorBad');
+  }
+}
+
+function processAddWord() {
+  const lexeme = document.getElementById('add-text').value;
+  if (lexeme === 'dev-mode-on') {
+    browser.storage.local.set({ wdDeveloperMode: true });
+    document.getElementById('add-text').value = '';
+    return;
+  }
+  if (lexeme === 'dev-mode-off') {
+    browser.storage.local.set({ wdDeveloperMode: false });
+    document.getElementById('add-text').value = '';
+    return;
+  }
+  addLexeme(lexeme, popupHandleAddResult);
+}
+
+function processRate(increase) {
+  browser.storage.local.get(['wdMinimunRank']).then((result) => {
+    const minimunRank = result.wdMinimunRank + increase > 0 ? result.wdMinimunRank + increase : 0;
+    // minimunRank += increase;
+    // minimunRank = Math.min(100, Math.max(0, show_percents));
+    // display_percents(minimunRank);
+    document.getElementById('count-indicator').textContent = minimunRank;
+    browser.storage.local.set({ wdMinimunRank: minimunRank });
+  });
+}
+
+function processRateM100() {
+  processRate(-100);
+}
+function processRateM1000() {
+  processRate(-1000);
+}
+function processRateP100() {
+  processRate(100);
+}
+function processRateP1000() {
+  processRate(1000);
 }
 
 // function display_percents(show_percents) {
 //     var not_showing_cnt = Math.floor((dict_size / 100.0) * show_percents);
 //     document.getElementById("rateIndicator1").textContent = show_percents + "%";
 //     document.getElementById("rateIndicator2").textContent = show_percents + "%";
-//     document.getElementById("countIndicator").textContent = not_showing_cnt;
+//     document.getElementById("count-indicator").textContent = not_showing_cnt;
 // }
 
-function init_controls() {
-    window.onload = () => {
-        document.getElementById("addToList").addEventListener("click", process_checkbox);
-        document.getElementById("adjust").addEventListener("click", process_adjust);
-        document.getElementById("showVocab").addEventListener("click", process_show);
-        document.getElementById("getHelp").addEventListener("click", process_help);
-        document.getElementById("addWord").addEventListener("click", process_add_word);
-        document.getElementById("rankM1000").addEventListener("click", process_rate_m1000);
-        document.getElementById("rankM100").addEventListener("click", process_rate_m100);
-        document.getElementById("rankP100").addEventListener("click", process_rate_p100);
-        document.getElementById("rankP1000").addEventListener("click", process_rate_p1000);
-        document.getElementById("changeMode").addEventListener("click", process_mode_switch);
+function initControls() {
+  window.onload = () => {
+    document.getElementById('add-to-list').addEventListener('click', processCheckbox);
+    document.getElementById('adjust').addEventListener('click', processAdjust);
+    document.getElementById('show-vocab').addEventListener('click', processShow);
+    document.getElementById('get-help').addEventListener('click', processHelp);
+    document.getElementById('add-word').addEventListener('click', processAddWord);
+    document.getElementById('rank-m1000').addEventListener('click', processRateM1000);
+    document.getElementById('rank-m100').addEventListener('click', processRateM100);
+    document.getElementById('rank-p100').addEventListener('click', processRateP100);
+    document.getElementById('rank-p1000').addEventListener('click', processRateP1000);
+    document.getElementById('change-mode').addEventListener('click', processModeSwitch);
 
-        document.getElementById("addText").addEventListener("keyup", event => {
-            event.preventDefault();
-            if (event.key == 'Enter') {
-                process_add_word();
-            }
-        });
+    document.getElementById('add-text').addEventListener('keyup', (event) => {
+      event.preventDefault();
+      if (event.key === 'Enter') {
+        processAddWord();
+      }
+    });
 
-        display_vocabulary_size();
+    displayVocabularySize();
 
-        chrome.storage.local.get(['jhMinimunRank', 'jhIsEnabled'], result => {
-            // var show_percents = result.wd_show_percents;
-            enabled_mode = result.jhIsEnabled;
-            // dict_size = result.wd_word_max_rank;
-            document.getElementById("countIndicator").textContent = result.jhMinimunRank;
-            // display_percents(show_percents);
-            display_mode();
-        });
-    }
+    browser.storage.local.get(['wdMinimunRank', 'wdIsEnabled']).then((result) => {
+      // var show_percents = result.wd_show_percents;
+      enabledMode = result.wdIsEnabled;
+      // dict_size = result.wd_word_max_rank;
+      document.getElementById('count-indicator').textContent = result.wdMinimunRank;
+      // display_percents(show_percents);
+      displayMode();
+    });
+  };
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    localizeHtmlPage();
-    init_controls();
+document.addEventListener('DOMContentLoaded', () => {
+  localizeHtmlPage();
+  initControls();
 });
