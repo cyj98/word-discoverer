@@ -12,10 +12,4 @@ package-lock.json
 *bak
 .vscode
 
-*.log
-
-/src/data/*
-
-/mecab*
-
 config

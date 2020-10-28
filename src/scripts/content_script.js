@@ -1,55 +1,49 @@
 import browser from 'webextension-polyfill';
 import nlp from 'compromise';
-import { makeHlStyle, addLexeme, readFile, processData } from './lib/common_lib';
+import { makeHlStyle, addLexeme } from './lib/common_lib';
 import { getDictDefinitionUrl } from './lib/context_menu_lib';
-// const pQueue = new PQueue({ concurrency: 1 });
+import contentScriptStyle from '../styles/content_script.css';
 
-const classNamePrefix = 'wdautohlen_';
+const classNamePrefix = 'wdautohlen';
 const haveEnglishRegex = /[-a-zA-Z]/;
-const beginWithEnglishRegex = /^[a-z][a-z]*$/;
+// const beginWithEnglishRegex = /^[a-z][a-z]*$/;
 let dictWords;
 // let dictIdoms;
 
-let wdMinimunRank = 1;
-let wordMaxRank = 0;
 let userVocabulary = [];
-// let is_enabled = null;
+let wdMinimunRank = 1;
 let wdHlSettings = null;
 let wdHoverSettings = null;
 let wdOnlineDicts = null;
 let wdEnableTTS = null;
 
+let wordMaxRank = 0;
+
 // let disableByKeypress = false;
 
 let currentLexeme = '';
 // use to find node to render popup
-let curWdNodeId = 1;
+let currentNodeId = 1;
 
 let functionKeyIsPressed = false;
 let renderedNodeId = null;
 let nodeToRenderId = null;
 
-function limitTextLen(word) {
+const limitTextLen = (word) => {
   if (!word) return word;
   // word = word.toLowerCase();
   const maxLen = 20;
   if (word.length <= maxLen) return word;
   return `${word.slice(0, maxLen)}...`;
-}
+};
 
-function getHeatColorPoint(freqPercentOld) {
+const getHeatColorPoint = (freqPercentOld) => {
   let freqPercent = freqPercentOld;
   if (!freqPercent) freqPercent = 0;
   freqPercent = Math.max(0, Math.min(100, freqPercent));
   const hue = 100 - freqPercent;
   return `hsl(${hue}, 100%, 50%)`;
-}
-
-function assert(condition, message) {
-  if (!condition) {
-    throw message || 'Assertion failed';
-  }
-}
+};
 
 const goodTagsList = [
   'P',
@@ -67,53 +61,55 @@ const goodTagsList = [
   'SPAN',
 ];
 
-const mygoodfilter = (node) => {
+const goodNodeFilter = (node) => {
   if (goodTagsList.indexOf(node.parentNode.tagName) !== -1) return NodeFilter.FILTER_ACCEPT;
   return NodeFilter.FILTER_SKIP;
 };
 
-function getRareLemma(word) {
+const getRareLemma = (word) => {
+  if (!userVocabulary) return undefined;
   if (word.length < 3) return undefined;
   let lemma = word;
-  if (!word.includes('-')) {
-    const verbNlp = nlp(word).verbs();
-    if (verbNlp.json().length !== 0) {
-      lemma = verbNlp.toInfinitive().text();
-    }
-    const nounNlp = nlp(word).nouns();
-    if (nounNlp.json().length !== 0) {
-      lemma = nounNlp.toSingular().text();
-    }
-  }
-  const wordFound = dictWords.find((obj) => obj.word === lemma);
+  // if (!word.includes('-')) {
+  //   const wordNlp = nlp(word);
+  //   const wordTags = Object.values(wordNlp.out('tags')[0])[0];
+  //   if (wordTags.indexOf('Verb') !== -1 && wordTags.indexOf('Infinitive') === -1) {
+  //     lemma = wordNlp.verbs().toInfinitive().all().text();
+  //   }
+  //   if (wordTags.indexOf('Plural') !== -1) {
+  //     lemma = wordNlp.nouns().toSingular().all().text();
+  //   }
+  // }
+  const wordFound = dictWords[lemma];
   if (!wordFound || wordFound.rank < wdMinimunRank) return undefined;
-  // const lemma = wordFound.word;
-  return !userVocabulary || !Object.prototype.hasOwnProperty.call(userVocabulary, wordFound.word)
-    ? wordFound
-    : undefined;
-}
+  wordFound.word = lemma;
+  return !Object.prototype.hasOwnProperty.call(userVocabulary, lemma) ? wordFound : undefined;
+};
 
-async function textToHlNodes(text, dst) {
-  const lcText = text.toLowerCase();
+const textToHlNodes = (textNode) => {
+  const { parentElement, textContent } = textNode;
+  const lowercaseText = textContent.toLowerCase();
   // let wsText = lcText.replace(/[,;()?!`:"'.\s\-\u2013\u2014\u201C\u201D\u2019]/g, ' ');
-  const wsText = lcText.replace(/[^\w- ']/g, ' ');
+  const wsText = lowercaseText.replace(/[^\w- ']/g, ' ');
   // wsText = wsText.replace(/[^\w ]/g, '.');
 
   const tokens = wsText.split(' ');
 
-  let numGood = 0; // number of found dictionary words
-  let numNonempty = 0;
-  let ibegin = 0; // beginning of word
-  let wnum = 0; // word number
+  // let foundWordsCount = 0;
+  // let nonEmptyWordsCount = 0;
+  let wordBeginIndex = 0; // beginning of word
+  let wordNumber = 0;
 
-  const matches = [];
+  // const tokenizeOther = wdHoverSettings.ow_hover !== 'never';
 
-  const tokenizeOther = wdHoverSettings.ow_hover !== 'never';
-
-  while (wnum < tokens.length) {
-    if (tokens[wnum].length) {
-      numNonempty += 1;
+  let lastEndPos = 0;
+  let newTextNode = textNode;
+  while (wordNumber < tokens.length) {
+    if (tokens[wordNumber].length) {
+      // nonEmptyWordsCount += 1;
       let match;
+      let textStyle;
+      let className;
       // if (!match && wdHlSettings.idiomParams.enabled) {
       //   let lwnum = wnum; // look ahead word number
       //   let libegin = ibegin; // look ahead word begin
@@ -148,229 +144,159 @@ async function textToHlNodes(text, dst) {
       //   }
       // }
       if (!match && wdHlSettings.wordParams.enabled) {
-        const wordFound = getRareLemma(tokens[wnum]);
+        const wordFound = getRareLemma(tokens[wordNumber]);
         if (wordFound && wordFound.word) {
-          // console.log(tokens[wnum], wordFound.word);
           match = {
+            original: tokens[wordNumber],
             normalized: wordFound.word,
             kind: 'lemma',
-            begin: ibegin,
-            end: ibegin + tokens[wnum].length,
+            begin: wordBeginIndex,
+            // end: ibegin + tokens[wnum].length,
             rank: wordFound.rank,
             frequency: wordFound.total,
           };
-          ibegin += tokens[wnum].length + 1;
-          wnum += 1;
-          numGood += 1;
+          wordBeginIndex += tokens[wordNumber].length + 1;
+          wordNumber += 1;
+          // foundWordsCount += 1;
+          const hlParams = wdHlSettings.wordParams;
+          textStyle = makeHlStyle(hlParams);
+          className = `${match.normalized}_${match.rank}:${match.frequency}`;
         }
       }
-      if (
-        tokenizeOther &&
-        !match &&
-        tokens[wnum].length >= 3 &&
-        beginWithEnglishRegex.test(tokens[wnum])
-      ) {
-        match = {
-          normalized: null,
-          kind: 'word',
-          begin: ibegin,
-          end: ibegin + tokens[wnum].length,
-        };
-        ibegin += tokens[wnum].length + 1;
-        wnum += 1;
-      }
-      if (Object.prototype.hasOwnProperty.call(dictWords, tokens[wnum])) {
-        numGood += 1;
-      }
+      // if (
+      //   tokenizeOther &&
+      //   !match &&
+      //   tokens[wnum].length >= 3 &&
+      //   beginWithEnglishRegex.test(tokens[wnum])
+      // ) {
+      //   match = {
+      //     normalized: null,
+      //     kind: 'other',
+      //     begin: ibegin,
+      //     end: ibegin + tokens[wnum].length,
+      //   };
+      //   ibegin += tokens[wnum].length + 1;
+      //   wnum += 1;
+      // }
+      // if (Object.prototype.hasOwnProperty.call(dictWords, tokens[wordNumber])) {
+      //   foundWordsCount += 1;
+      // }
       if (match) {
-        matches.push(match);
+        parentElement.classList.add(classNamePrefix);
+        const span = document.createElement('span');
+        span.textContent = match.original;
+        span.id = `${classNamePrefix}_${currentNodeId}`;
+        span.className = `${classNamePrefix}_${className}`;
+        span.style = textStyle;
+        currentNodeId += 1;
+        newTextNode = newTextNode.splitText(match.begin - lastEndPos);
+        lastEndPos = match.begin + match.original.length;
+        newTextNode.deleteData(0, match.original.length);
+        parentElement.insertBefore(span, newTextNode);
       } else {
-        ibegin += tokens[wnum].length + 1;
-        wnum += 1;
+        wordBeginIndex += tokens[wordNumber].length + 1;
+        wordNumber += 1;
       }
     } else {
-      wnum += 1;
-      ibegin += 1;
+      wordNumber += 1;
+      wordBeginIndex += 1;
     }
   }
-
-  if ((numGood * 1.0) / numNonempty < 0.1) {
-    return 0;
-  }
-
-  let lastHlEndPos = 0;
-  let insertCount = 0;
-  for (let i = 0; i < matches.length; i += 1) {
-    let textStyle;
-    let className;
-    const match = matches[i];
-    if (match.kind === 'lemma') {
-      const hlParams = wdHlSettings.wordParams;
-      textStyle = makeHlStyle(hlParams);
-      className = `${match.normalized}_${match.rank}:${match.frequency}`;
-      // } else if (match.kind === 'idiom') {
-      //   const hlParams = wdHlSettings.idiomParams;
-      //   textStyle = makeHlStyle(hlParams);
-    } else if (match.kind === 'word') {
-      textStyle = 'font:inherit;display:inline;color:inherit;background-color:inherit;';
-      className = match.normalized;
-    }
-    if (textStyle) {
-      insertCount += 1;
-      if (lastHlEndPos < match.begin) {
-        dst.push(document.createTextNode(text.slice(lastHlEndPos, match.begin)));
-      }
-      lastHlEndPos = match.end;
-      const span = document.createElement('span');
-      span.textContent = text.slice(match.begin, lastHlEndPos);
-      span.setAttribute('style', textStyle);
-      span.id = `wdautohlen_id_${curWdNodeId}`;
-      curWdNodeId += 1;
-      // const wdclassname = makeClassName(match.normalized);
-      const wdclassname = classNamePrefix + className;
-      span.setAttribute('class', wdclassname);
-      dst.push(span);
-    }
-  }
-
-  if (insertCount && lastHlEndPos < text.length) {
-    dst.push(document.createTextNode(text.slice(lastHlEndPos, text.length)));
-  }
-
-  return insertCount;
-}
-
-function doHighlightText(textNodes) {
-  if (
-    textNodes === null ||
-    textNodes.length === 0 ||
-    dictWords === null ||
-    wdMinimunRank === null
-  ) {
-    return;
-  }
-  // if (disableByKeypress) {
+  // if ((foundWordsCount * 1.0) / nonEmptyWordsCount < 0.1) {
   //   return;
   // }
+};
 
-  textNodes.forEach((textNode) => {
-    const { parentNode } = textNode;
-    if (!parentNode) {
-      return;
-    }
-    if (textNodes.offsetParent === null) {
-      return;
-    }
-    const text = textNode.textContent;
-    if (text.length <= 3) {
-      return;
-    }
-    if (text.indexOf('{') !== -1 && text.indexOf('}') !== -1) {
-      // continue; //pathetic hack to skip json data in text (e.g. google images use it).
-      return;
-    }
-    if (!text.match(haveEnglishRegex)) {
-      return;
-    }
-    const newChildren = [];
-    textToHlNodes(text, newChildren).then((insertCount) => {
-      if (insertCount) {
-        assert(newChildren.length > 0, 'children must be non empty');
-        for (let j = 0; j < newChildren.length; j += 1) {
-          parentNode.insertBefore(newChildren[j], textNode);
-        }
-        parentNode.removeChild(textNode);
-      }
-    });
-  });
-}
+const doHighlightText = (textNode) => {
+  if (textNode.nodeType !== Node.TEXT_NODE || dictWords === null || wdMinimunRank === null) return;
+  const { parentElement, textContent } = textNode;
+  if (!parentElement) return;
+  if (textContent.length <= 3) return;
+  // pathetic hack to skip json data in text (e.g. google images use it).
+  if (textContent.indexOf('{') !== -1 && textContent.indexOf('}') !== -1) return;
+  if (!textContent.match(haveEnglishRegex)) return;
+  textToHlNodes(textNode);
+};
 
-function textNodesUnder(el) {
-  const a = [];
-  const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, mygoodfilter, false);
-  let n = walk.nextNode();
-  while (n) {
-    a.push(n);
-    n = walk.nextNode();
+const textNodesUnder = (node) => {
+  if (!node.parentElement || node.parentElement.className.includes(classNamePrefix)) return;
+  if (node.nodeType === Node.ELEMENT_NODE) {
+    if (node.id && node.id.startsWith(classNamePrefix)) return;
+    const nodeList = [];
+    const treeWalker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, goodNodeFilter, false);
+    let currentNode = treeWalker.nextNode();
+    while (currentNode) {
+      nodeList.push(currentNode);
+      currentNode = treeWalker.nextNode();
+    }
+    nodeList.forEach((textNode) => doHighlightText(textNode));
+  } else if (node.nodeType === Node.TEXT_NODE) {
+    doHighlightText(node);
   }
-  doHighlightText(a);
-  // return a;
-}
+};
 
-function onNodeInserted(event) {
-  const inobj = event.target;
-  if (!inobj) return;
-  let classattr = null;
-  if (typeof inobj.getAttribute !== 'function') {
-    return;
-  }
-  try {
-    classattr = inobj.getAttribute('class');
-  } catch (e) {
-    return;
-  }
-  if (!classattr || !classattr.startsWith('wdautohlen_')) {
-    textNodesUnder(inobj);
-    // const textNodes = textNodesUnder(inobj);
-    // doHighlightText(textNodes);
-  }
-}
-
-function unhighlight(lemma) {
-  const hlNodes = document.querySelectorAll(`[class^=${classNamePrefix}${lemma}]`);
+const unhighlight = (lemma) => {
+  const hlNodes = document.querySelectorAll(`[class^=${classNamePrefix}_${lemma}]`);
   // for (const hlNode of hlNodes) {
   hlNodes.forEach((hlNode) => {
-    hlNode.setAttribute(
-      'style',
-      'font-weight:inherit;color:inherit;font-size:inherit;background-color:inherit;display:inline;',
-    );
-    hlNode.setAttribute('class', 'wdautohlen_none_none');
+    // eslint-disable-next-line no-param-reassign
+    hlNode.style =
+      'font-weight:inherit;color:inherit;font-size:inherit;background-color:inherit;display:inline;';
+    // eslint-disable-next-line no-param-reassign
+    hlNode.className = `${classNamePrefix}_none_none`;
   });
-}
+};
 
-function bubbleHandleTts(lexeme) {
-  browser.runtime.sendMessage({ type: 'tts_speak', word: lexeme });
-}
+const bubbleHandleTts = (lexeme) => {
+  const utterance = new SpeechSynthesisUtterance(lexeme);
+  speechSynthesis.speak(utterance);
+};
 
-function bubbleHandleAddResult(report, lemma) {
+const bubbleHandleAddResult = (report, lemma) => {
   if (report === 'ok' || report === 'exists') {
     unhighlight(lemma);
   }
-}
+};
 
-function hideBubble(force) {
-  const bubbleDOM = document.getElementById('wd-selection-bubble-en');
-  if (force || (!bubbleDOM.wdMouseOn && nodeToRenderId !== renderedNodeId)) {
-    bubbleDOM.style.display = 'none';
-    renderedNodeId = null;
-    // console.log(bubbleDOM);
-  }
-}
-
-function searchDict(e) {
-  const dictUrl = e.target.getAttribute('wdDictRefUrl');
+const searchDict = (e) => {
+  const dictUrl = e.target.dataset.dictionaryReferenceUrl;
   const newTabUrl = getDictDefinitionUrl(dictUrl, currentLexeme);
   browser.runtime.sendMessage({ wdmNewTabUrl: newTabUrl });
-}
+};
 
-function createBubble() {
+const hideBubble = (force) => {
+  const bubbleDOM = document
+    .getElementById('wd-selection-bubble-container-en')
+    .shadowRoot.getElementById('wd-selection-bubble');
+  if (force || !bubbleDOM || (!bubbleDOM.wdMouseOn && nodeToRenderId !== renderedNodeId)) {
+    bubbleDOM.style.display = 'none';
+    renderedNodeId = null;
+  }
+};
+
+const createBubble = () => {
+  const bubbleDOMContainer = document.createElement('div');
+  const shadow = bubbleDOMContainer.attachShadow({ mode: 'open' });
+  bubbleDOMContainer.id = 'wd-selection-bubble-container-en';
   const bubbleDOM = document.createElement('div');
-  // bubbleDOM.setAttribute('class', 'wd-selection-bubble-en');
-  bubbleDOM.setAttribute('id', 'wd-selection-bubble-en');
+  const style = document.createElement('style');
+  [[, style.textContent]] = contentScriptStyle;
+  shadow.prepend(style);
+  shadow.append(bubbleDOM);
+
+  bubbleDOM.id = 'wd-selection-bubble';
 
   const infoSpan = document.createElement('span');
-  infoSpan.setAttribute('id', 'wd-selection-bubble-text-en');
-  // infoSpan.setAttribute('class', 'wd-infoSpanJA');
+  infoSpan.id = 'wd-selection-bubble-text';
   bubbleDOM.appendChild(infoSpan);
 
   const freqSpan = document.createElement('span');
-  freqSpan.setAttribute('id', 'wd-selection-bubble-freq-en');
-  // freqSpan.setAttribute('class', 'wdFreqSpanJA');
+  freqSpan.id = 'wd-selection-bubble-freq';
   freqSpan.textContent = 'n/a';
   bubbleDOM.appendChild(freqSpan);
 
   const addButton = document.createElement('button');
-  addButton.setAttribute('class', 'wd-add-button-en');
+  addButton.className = 'wd-add-button';
   addButton.textContent = browser.i18n.getMessage('menuItem');
   addButton.style.marginBottom = '4px';
   addButton.addEventListener('click', () => {
@@ -379,7 +305,7 @@ function createBubble() {
   bubbleDOM.appendChild(addButton);
 
   const speakButton = document.createElement('button');
-  speakButton.setAttribute('class', 'wd-add-button-en');
+  speakButton.className = 'wd-add-button';
   speakButton.textContent = 'Audio';
   speakButton.style.marginBottom = '4px';
   speakButton.addEventListener('click', () => {
@@ -391,9 +317,9 @@ function createBubble() {
   const dictPairs = wdOnlineDicts;
   for (let i = 0; i < dictPairs.length; i += 1) {
     const dictButton = document.createElement('button');
-    dictButton.setAttribute('class', 'wd-add-button-en');
+    dictButton.className = 'wd-add-button';
     dictButton.textContent = dictPairs[i].title;
-    dictButton.setAttribute('wdDictRefUrl', dictPairs[i].url);
+    dictButton.dataset.dictionaryReferenceUrl = dictPairs[i].url;
     dictButton.addEventListener('click', searchDict);
     bubbleDOM.appendChild(dictButton);
   }
@@ -406,28 +332,30 @@ function createBubble() {
     bubbleDOM.wdMouseOn = true;
   });
 
-  return bubbleDOM;
-}
+  // return bubbleDOM;
+  return bubbleDOMContainer;
+};
 
-function renderBubble() {
+const renderBubble = () => {
   if (!nodeToRenderId) return;
   if (nodeToRenderId === renderedNodeId) return;
 
   const nodeToRender = document.getElementById(nodeToRenderId);
-  if (!nodeToRender) return;
+  if (!nodeToRender || nodeToRender.nodeType !== Node.ELEMENT_NODE) return;
 
-  const classattr = nodeToRender.getAttribute('class');
-  const isHighlighted = classattr !== 'wdautohlen_none_none';
+  const { className } = nodeToRender;
+  const isHighlighted = className !== `${classNamePrefix}_none_none`;
   const paramKey = isHighlighted ? 'hl_hover' : 'ow_hover';
   const paramValue = wdHoverSettings[paramKey];
   if (paramValue === 'never' || (paramValue === 'key' && !functionKeyIsPressed)) {
     return;
   }
 
-  const bubbleDOM = document.getElementById('wd-selection-bubble-en');
-  const bubbleText = document.getElementById('wd-selection-bubble-text-en');
-  const bubbleFreq = document.getElementById('wd-selection-bubble-freq-en');
-  [, currentLexeme, bubbleFreq.textContent] = classattr.split('_');
+  const shadow = document.getElementById('wd-selection-bubble-container-en').shadowRoot;
+  const bubbleDOM = shadow.getElementById('wd-selection-bubble');
+  const bubbleText = shadow.getElementById('wd-selection-bubble-text');
+  const bubbleFreq = shadow.getElementById('wd-selection-bubble-freq');
+  [, currentLexeme, bubbleFreq.textContent] = className.split('_');
   bubbleText.textContent = limitTextLen(currentLexeme);
   const [rank] = bubbleFreq.textContent.split(':');
   bubbleFreq.style.backgroundColor = getHeatColorPoint((rank / wordMaxRank) * 100);
@@ -438,41 +366,33 @@ function renderBubble() {
   renderedNodeId = nodeToRenderId;
 
   if (wdEnableTTS) {
-    browser.runtime.sendMessage({ type: 'tts_speak', word: currentLexeme });
+    const utterance = new SpeechSynthesisUtterance(currentLexeme);
+    speechSynthesis.speak(utterance);
   }
-}
+};
 
-function processHlLeave() {
+const processHlLeave = () => {
   nodeToRenderId = null;
-  setTimeout(() => {
-    hideBubble(false);
-  }, 100);
-}
+  if (renderedNodeId) hideBubble(false);
+};
 
-function processMouse(e) {
+const processMouse = (e) => {
   const hitNode = document.elementFromPoint(e.clientX, e.clientY);
-  if (!hitNode) {
+  if (!hitNode || hitNode.nodeType !== Node.ELEMENT_NODE) {
     processHlLeave();
     return;
   }
-  let classattr = null;
-  try {
-    classattr = hitNode.getAttribute('class');
-  } catch (exc) {
-    processHlLeave();
-    return;
-  }
-  if (!classattr || !classattr.startsWith('wdautohlen_')) {
+  const { className } = hitNode;
+  console.log(className);
+  if (!className || !className.startsWith(classNamePrefix)) {
     processHlLeave();
     return;
   }
   nodeToRenderId = hitNode.id;
-  setTimeout(() => {
-    renderBubble();
-  }, 200);
-}
+  renderBubble();
+};
 
-function getVerdict(isEnabled, wdBlackList, wdWhiteList, hostname) {
+const getVerdict = (isEnabled, wdBlackList, wdWhiteList, hostname) => {
   if (Object.prototype.hasOwnProperty.call(wdBlackList, hostname)) {
     return 'site in "Skip List"';
   }
@@ -480,91 +400,83 @@ function getVerdict(isEnabled, wdBlackList, wdWhiteList, hostname) {
     return 'highlight';
   }
   return isEnabled ? 'highlight' : 'site is not in "Favorites List"';
-}
+};
 
-function initForPage() {
+const initForPage = async () => {
   if (!document.body) return;
 
-  browser.storage.local
-    .get([
-      'wdOnlineDicts',
-      'wdHoverSettings',
-      'wdIsEnabled',
-      'wdUserVocabulary',
-      'wdHlSettings',
-      'wdBlackList',
-      'wdWhiteList',
-      'wdEnableTTS',
-      'wdMinimunRank',
-    ])
-    .then((result) => {
-      const { wdIsEnabled, wdBlackList, wdWhiteList } = result;
-      const { hostname } = window.location;
-      // window.location document.URL document.location.href
-      const verdict = getVerdict(wdIsEnabled, wdBlackList, wdWhiteList, hostname);
-      // to change icon
-      browser.runtime.sendMessage({ wdmVerdict: verdict });
-      if (verdict !== 'highlight') return;
+  const result = await browser.storage.local.get([
+    'dictWords',
+    'wdOnlineDicts',
+    'wdHoverSettings',
+    'wdIsEnabled',
+    'wdUserVocabulary',
+    'wdHlSettings',
+    'wdBlackList',
+    'wdWhiteList',
+    'wdEnableTTS',
+    'wdMinimunRank',
+  ]);
+  const { wdIsEnabled, wdBlackList, wdWhiteList } = result;
+  const { hostname } = window.location;
+  // window.location document.URL document.location.href
+  const verdict = getVerdict(wdIsEnabled, wdBlackList, wdWhiteList, hostname);
+  // to change icon
+  browser.runtime.sendMessage({ wdmVerdict: verdict });
+  if (verdict !== 'highlight') return;
 
-      const frequencylist = browser.runtime.getURL('../data/frequencylist.csv');
-      readFile(frequencylist).then((text) => {
-        dictWords = processData(text);
-        wordMaxRank = dictWords.length - 1;
+  dictWords = result.dictWords;
+  wordMaxRank = dictWords.length - 1;
+  userVocabulary = result.wdUserVocabulary;
+  wdOnlineDicts = result.wdOnlineDicts;
+  wdEnableTTS = result.wdEnableTTS;
+  wdHoverSettings = result.wdHoverSettings;
+  wdHlSettings = result.wdHlSettings;
+  wdMinimunRank = result.wdMinimunRank;
 
-        textNodesUnder(document.body);
-        document.addEventListener('DOMNodeInserted', onNodeInserted, false);
+  textNodesUnder(document.body);
+  // document.addEventListener('DOMNodeInserted', onNodeInserted, false);
+  const observer = new MutationObserver((mutationsList) => {
+    mutationsList.forEach((mutation) => {
+      Array.from(mutation.addedNodes).forEach((node) => {
+        textNodesUnder(node);
       });
-
-      wdOnlineDicts = result.wdOnlineDicts;
-      wdEnableTTS = result.wdEnableTTS;
-      userVocabulary = result.wdUserVocabulary;
-      wdHoverSettings = result.wdHoverSettings;
-      wdHlSettings = result.wdHlSettings;
-      wdMinimunRank = result.wdMinimunRank;
-      // dict_words = result.words_discoverer_eng_dict;
-      // dict_idioms = result.wd_idioms;
-      // const show_percents = result.wd_show_percents;
-
-      browser.runtime.onMessage.addListener((request) => {
-        if (request.wdm_unhighlight) {
-          const lemma = request.wdm_unhighlight;
-          unhighlight(lemma);
-        }
-      });
-
-      document.addEventListener('keydown', (event) => {
-        if (event.key === 'Control') {
-          functionKeyIsPressed = true;
-          renderBubble();
-          // return;
-        }
-        // var elementTagName = event.target.tagName;
-        // if (!disable_by_keypress && elementTagName != 'BODY') {
-        //   // workaround to prevent highlighting in facebook messages
-        //   // this logic can also be helpful in other situations,
-        //   // it's better play safe and stop highlighting when user enters data.
-        //   disable_by_keypress = true;
-        //   chrome.runtime.sendMessage({ wdmVerdict: 'keyboard' });
-        // }
-      });
-
-      document.addEventListener('keyup', (event) => {
-        if (event.key === 'Control') {
-          functionKeyIsPressed = false;
-        }
-      });
-
-      const bubbleDOM = createBubble();
-      document.body.appendChild(bubbleDOM);
-      // document.addEventListener('mousedown', hideBubble(true), false);
-      document.addEventListener('mousemove', processMouse, false);
-      window.addEventListener('scroll', () => {
-        nodeToRenderId = null;
-        hideBubble(true);
-      });
-      // });
     });
-}
+  });
+  observer.observe(document.body, { subtree: true, childList: true });
+
+  browser.runtime.onMessage.addListener((request) => {
+    if (request.wdm_unhighlight) {
+      const lemma = request.wdm_unhighlight;
+      unhighlight(lemma);
+    }
+  });
+
+  const bubbleDOM = createBubble();
+  document.body.appendChild(bubbleDOM);
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Control') {
+      functionKeyIsPressed = true;
+      renderBubble();
+      // return;
+    }
+    // var elementTagName = event.target.tagName;
+    // if (!disable_by_keypress && elementTagName != 'BODY') {
+    //   // workaround to prevent highlighting in facebook messages
+    //   // this logic can also be helpful in other situations,
+    //   // it's better play safe and stop highlighting when user enters data.
+    //   disable_by_keypress = true;
+    //   chrome.runtime.sendMessage({ wdmVerdict: 'keyboard' });
+    // }
+  });
+  document.addEventListener('keyup', (event) => {
+    if (event.key === 'Control') {
+      functionKeyIsPressed = false;
+    }
+  });
+  document.addEventListener('mousemove', processMouse, false);
+  window.addEventListener('scroll', () => processHlLeave());
+};
 
 document.addEventListener('DOMContentLoaded', () => {
   initForPage();

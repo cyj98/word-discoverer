@@ -1,6 +1,7 @@
 const path = require('path');
 const TerserPlugin = require('terser-webpack-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
+// const ExtensionReloader = require('webpack-extension-reloader');
 
 module.exports = (_, argv) => {
   const config = {
@@ -18,6 +19,14 @@ module.exports = (_, argv) => {
       filename: './scripts/[name].js',
       path: path.resolve(__dirname, 'dist-chrome'),
     },
+    module: {
+      rules: [
+        {
+          test: /\.css$/,
+          use: ['css-loader'],
+        },
+      ],
+    },
     plugins: [
       new CopyPlugin([
         '_locales/**/*',
@@ -27,6 +36,16 @@ module.exports = (_, argv) => {
         'styles/*',
         'manifest.json',
       ]),
+      // new ExtensionReloader({
+      //   reloadPage: true,
+      //   entries: {
+      //     contentScript: ['scripts/content_script.js'],
+      //     background: 'scripts/background.js',
+      //     popup: 'html/popup.thlm',
+      //     options: 'html/options.thml',
+      //     // extensionPage: ['popup', 'options'],
+      //   },
+      // }),
     ],
   };
   if (config.mode === 'production') {

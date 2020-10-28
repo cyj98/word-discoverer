@@ -1,7 +1,7 @@
 import browser from 'webextension-polyfill';
 import { syncIfNeeded, localizeHtmlPage } from './lib/common_lib';
 
-function parseVocabulary(text) {
+const parseVocabulary = (text) => {
   const lines = text.split('\n');
   const found = [];
   for (let i = 0; i < lines.length; i += 1) {
@@ -13,48 +13,48 @@ function parseVocabulary(text) {
     found.push(word);
   }
   return found;
-}
+};
 
-function addNewWords(newWords) {
-  browser.storage.local
-    .get(['wdUserVocabulary', 'wdUserVocabAdded', 'wdUserVocabDeleted'])
-    .then((result) => {
-      const { wdUserVocabulary, wdUserVocabAdded, wdUserVocabDeleted } = result;
-      let numAdded = 0;
-      const newState = { wdUserVocabulary };
-      for (let i = 0; i < newWords.length; i += 1) {
-        const word = newWords[i];
-        if (!Object.prototype.hasOwnProperty.call(wdUserVocabulary, word)) {
-          wdUserVocabulary[word] = 1;
-          numAdded += 1;
-          if (typeof wdUserVocabAdded !== 'undefined') {
-            wdUserVocabAdded[word] = 1;
-            newState.wdUserVocabAdded = wdUserVocabAdded;
-          }
-          if (typeof wdUserVocabDeleted !== 'undefined') {
-            delete wdUserVocabDeleted[word];
-            newState.wdUserVocabDeleted = wdUserVocabDeleted;
-          }
-        }
+const addNewWords = async (newWords) => {
+  const result = await browser.storage.local.get([
+    'wdUserVocabulary',
+    'wdUserVocabAdded',
+    'wdUserVocabDeleted',
+  ]);
+  const { wdUserVocabulary, wdUserVocabAdded, wdUserVocabDeleted } = result;
+  let numAdded = 0;
+  const newState = { wdUserVocabulary };
+  for (let i = 0; i < newWords.length; i += 1) {
+    const word = newWords[i];
+    if (!Object.prototype.hasOwnProperty.call(wdUserVocabulary, word)) {
+      wdUserVocabulary[word] = 1;
+      numAdded += 1;
+      if (typeof wdUserVocabAdded !== 'undefined') {
+        wdUserVocabAdded[word] = 1;
+        newState.wdUserVocabAdded = wdUserVocabAdded;
       }
-      if (numAdded) {
-        browser.storage.local.set(newState).then(() => {
-          syncIfNeeded();
-        });
+      if (typeof wdUserVocabDeleted !== 'undefined') {
+        delete wdUserVocabDeleted[word];
+        newState.wdUserVocabDeleted = wdUserVocabDeleted;
       }
-      const numSkipped = newWords.length - numAdded;
-      document.getElementById('added-info').textContent = `Added ${numAdded} new words.`;
-      document.getElementById('skipped-info').textContent = `Skipped ${numSkipped} existing words.`;
-    });
-}
+    }
+  }
+  const numSkipped = newWords.length - numAdded;
+  document.getElementById('added-info').textContent = `Added ${numAdded} new words.`;
+  document.getElementById('skipped-info').textContent = `Skipped ${numSkipped} existing words.`;
+  if (numAdded) {
+    await browser.storage.local.set(newState);
+    syncIfNeeded();
+  }
+};
 
-function processChange() {
+const processChange = () => {
   const inputElem = document.getElementById('do-load-vocab');
   const baseName = inputElem.files[0].name;
   document.getElementById('frame-preview').textContent = baseName;
-}
+};
 
-function processSubmit() {
+const processSubmit = () => {
   // TODO add a radio button with two options: 1. merge vocabulary [default]; 2. replace vocabulary
   const inputElem = document.getElementById('do-load-vocab');
   const file = inputElem.files[0];
@@ -64,14 +64,14 @@ function processSubmit() {
     addNewWords(newWords);
   };
   reader.readAsText(file);
-}
+};
 
-function initControls() {
+const initControls = () => {
   window.onload = () => {
     localizeHtmlPage();
     document.getElementById('vocab-submit').addEventListener('click', processSubmit);
     document.getElementById('do-load-vocab').addEventListener('change', processChange);
   };
-}
+};
 
 initControls();

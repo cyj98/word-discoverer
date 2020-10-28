@@ -7,92 +7,83 @@ const listSectionNames = {
   wdUserVocabulary: 'vocabulary-section',
 };
 
-function processDeleteSimple(listName, key) {
-  browser.storage.local.get([listName]).then((result) => {
-    const userList = result[listName];
-    delete userList[key];
-    browser.storage.local.set({ [listName]: userList });
-    showUserList(listName, userList);
-  });
-}
+const deleteBlackWhiteList = async (event, listName) => {
+  const key = event.target.dataset.text;
+  const result = await browser.storage.local.get([listName]);
+  const userList = result[listName];
+  delete userList[key];
+  browser.storage.local.set({ [listName]: userList });
+  event.target.parentElement.remove();
+};
 
-function processDeleteVocabEntry(key) {
-  browser.storage.local
-    .get(['wdUserVocabulary', 'wdUserVocabAdded', 'wdUserVocabDeleted'])
-    .then((result) => {
-      const { wdUserVocabulary, wdUserVocabAdded, wdUserVocabDeleted } = result;
-      const newState = { wdUserVocabulary };
-      delete wdUserVocabulary[key];
-      if (typeof wdUserVocabAdded !== 'undefined') {
-        delete wdUserVocabAdded[key];
-        newState.wdUserVocabAdded = wdUserVocabAdded;
-      }
-      if (typeof wdUserVocabDeleted !== 'undefined') {
-        wdUserVocabDeleted[key] = 1;
-        newState.wdUserVocabDeleted = wdUserVocabDeleted;
-      }
-      browser.storage.local.set(newState).then(() => {
-        syncIfNeeded();
-      });
-      showUserList('wdUserVocabulary', wdUserVocabulary);
-    });
-}
+const deleteUserDictionary = async (event) => {
+  const key = event.target.dataset.text;
+  const result = await browser.storage.local.get([
+    'wdUserVocabulary',
+    'wdUserVocabAdded',
+    'wdUserVocabDeleted',
+  ]);
+  const { wdUserVocabulary, wdUserVocabAdded, wdUserVocabDeleted } = result;
+  const newState = { wdUserVocabulary };
+  delete wdUserVocabulary[key];
+  if (typeof wdUserVocabAdded !== 'undefined') {
+    delete wdUserVocabAdded[key];
+    newState.wdUserVocabAdded = wdUserVocabAdded;
+  }
+  if (typeof wdUserVocabDeleted !== 'undefined') {
+    wdUserVocabDeleted[key] = 1;
+    newState.wdUserVocabDeleted = wdUserVocabDeleted;
+  }
+  await browser.storage.local.set(newState);
+  syncIfNeeded();
+  event.target.parentElement.remove();
+};
 
-function createButton(listName, text) {
-  const result = document.createElement('button');
-  result.setAttribute('class', 'delete-button');
-  result.expression_text = text;
+const createLabel = (text) => {
+  const textElement = document.createElement('span');
+  textElement.className = 'word-text';
+  textElement.textContent = text;
+  return textElement;
+};
+
+const createButton = (listName, text) => {
+  const deleteButtonElement = document.createElement('input');
+  deleteButtonElement.className = 'delete-button';
+  deleteButtonElement.src = '../images/delete.png';
+  deleteButtonElement.type = 'image';
+  deleteButtonElement.dataset.text = text;
   if (listName === 'wdUserVocabulary') {
-    result.addEventListener('click', function deleteVocabEntry() {
-      processDeleteVocabEntry(this.expression_text);
+    deleteButtonElement.addEventListener('click', (event) => {
+      deleteUserDictionary(event);
     });
   } else {
-    result.addEventListener('click', function deleteSimple() {
-      processDeleteSimple(listName, this.expression_text);
+    deleteButtonElement.addEventListener('click', (event) => {
+      deleteBlackWhiteList(event, listName);
     });
   }
-  const img = document.createElement('img');
-  img.setAttribute('src', '../images/delete.png');
-  result.appendChild(img);
-  return result;
-}
+  return deleteButtonElement;
+};
 
-function createLabel(text) {
-  const result = document.createElement('span');
-  result.setAttribute('class', 'word-text');
-  result.textContent = text;
-  return result;
-}
-
-function showUserList(listName, userList) {
-  const keys = [];
-  // for (const key in userList) {
-  Object.keys(userList).forEach((key) => {
-    if (Object.prototype.hasOwnProperty.call(userList, key)) {
-      keys.push(key);
-    }
-  });
+const showList = (listName, list) => {
   const sectionName = listSectionNames[listName];
-  const divElement = document.getElementById(sectionName);
-  while (divElement.firstChild) {
-    divElement.removeChild(divElement.firstChild);
-  }
-  if (!keys.length) {
-    divElement.appendChild(createLabel(browser.i18n.getMessage('emptyListError')));
-    divElement.appendChild(document.createElement('br'));
+  const sectionElement = document.getElementById(sectionName);
+  if (!Object.keys(list).length) {
+    sectionElement.appendChild(createLabel(browser.i18n.getMessage('emptyListError')));
     return;
   }
-  keys.forEach((key) => {
+  Object.keys(list).forEach((key) => {
     if (key.indexOf("'") !== -1 || key.indexOf('"') !== -1) {
       return;
     }
+    const divElement = document.createElement('div');
+    divElement.style = 'display:flex; align-items: center;';
     divElement.appendChild(createButton(listName, key));
     divElement.appendChild(createLabel(key));
-    divElement.appendChild(document.createElement('br'));
+    sectionElement.appendChild(divElement);
   });
-}
+};
 
-function processDisplay() {
+const processDisplay = async () => {
   // TODO replace this clumsy logic by adding a special
   // "data-list-name" attribute and renaming all 3 tags to "userListSection"
   let listName;
@@ -104,11 +95,10 @@ function processDisplay() {
     listName = 'wdUserVocabulary';
   }
 
-  browser.storage.local.get([listName]).then((result) => {
-    const userList = result[listName];
-    showUserList(listName, userList);
-  });
-}
+  const result = await browser.storage.local.get([listName]);
+  const userList = result[listName];
+  showList(listName, userList);
+};
 
 document.addEventListener('DOMContentLoaded', () => {
   processDisplay();

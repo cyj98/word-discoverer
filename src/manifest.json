@@ -8,9 +8,8 @@
   },
   "content_scripts": [
     {
-      "css": ["styles/content_script.css"],
       "js": ["scripts/content_script.js"],
-      "matches": ["\u003Call_urls>"],
+      "matches": ["<all_urls>"],
       "run_at": "document_start"
     }
   ],
@@ -29,7 +28,7 @@
     "client_id": "516018828037-b53oqkr5m5bfjdae8mhu426ipe76bggn.apps.googleusercontent.com",
     "scopes": ["https://www.googleapis.com/auth/drive.file"]
   },
-  "permissions": ["contextMenus", "storage", "activeTab", "tts", "identity"],
+  "permissions": ["contextMenus", "storage", "activeTab", "identity"],
   "version": "0.1.2",
   "web_accessible_resources": ["data/frequencylist.csv"]
 }

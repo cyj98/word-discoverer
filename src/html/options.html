@@ -1,86 +1,95 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
   <head>
     <style>
-    body {
-        background-color: rgb(255,248,220);
-    }
-    fieldset {
+      body {
+        background-color: rgb(255, 248, 220);
+      }
+      /* fieldset { */
+      .section-block {
         background-color: orange;
         padding: 8px;
         border: 0;
         width: 700px;
-    }
-    a {
+        margin-bottom: 15px;
+      }
+      #more-info-link {
         font-size: 16px;
         margin: 4px 10px;
-    }
-    .dict-name-header {
+      }
+      .adjust-popup-list {
+        list-style-type: none;
+        padding: 0;
+      }
+      .adjust-popup-list li {
+        display: flex;
+        align-items: center;
+        margin-bottom: 2px;
+      }
+      .dict-name-header {
         display: inline-block;
         margin: 4px 8px;
         width: 200px;
         height: 25px;
         font-size: 12px;
         font-weight: bold;
-    }
-    .dict-url-header {
+      }
+      .dict-url-header {
         display: inline-block;
         margin: 4px 8px;
         width: 300px;
         height: 25px;
         font-size: 14px;
         font-weight: bold;
-    }
-    .existing-dict-name {
+      }
+      .dict-block {
+        display: flex;
+        align-items: center;
+      }
+      .dict-name {
         display: inline-block;
-        background-color: rgb(255,248,220);
+        background-color: rgb(255, 248, 220);
         margin: 4px 8px;
         width: 200px;
         line-height: 25px;
         font-size: 12px;
-    }
-    .existing-dict-url {
-        background-color: rgb(255,248,220);
+      }
+      .dict-url {
+        background-color: rgb(255, 248, 220);
         margin: 4px 8px;
         width: 300px;
         line-height: 25px;
         border: none;
         font-size: 12px;
-    }
-    .dict-add-name {
+      }
+      .dict-add-name {
         box-sizing: border-box;
-        margin: 4px 8px;
-        width: 200px;
-        height: 25px;
-        font-size: 12px;
-    }
-    .dict-add-url {
-        box-sizing: border-box;
-        margin: 4px 8px;
-        width: 300px;
-        height: 25px;
-        font-size: 12px;
-    }
-    .cb-label {
+        background-color: white;
+        border: 0;
+      }
+      .dict-add-url {
+        background-color: white;
+      }
+      .cb-label {
         vertical-align: middle;
         font-size: 14px;
-        padding: 2px;
-    }
-    .cbHeaderLabel {
+        margin-left: 2px;
+      }
+      .cb-header-label {
         vertical-align: middle;
         padding: 2px;
         font-size: 14px;
-    }
-    .imgButton {
+      }
+      .img-button {
         background-color: orange;
         border: none;
         padding: 0px 0px 0px 0px;
         margin: 0px 4px 0px 10px;
         cursor: pointer;
-    }
-    .long-button {
+      }
+      .long-button {
         width: 150px;
-        background-color: #4CAF50; /* Green */
+        background-color: #4caf50; /* Green */
         border: 1px solid white;
         color: white;
         padding: 4px 6px;
@@ -90,11 +99,11 @@
         margin: 4px 8px;
         transition-duration: 0.4s;
         cursor: pointer;
-    }
-    .long-button:hover {
+      }
+      .long-button:hover {
         background-color: #3e8e41;
-    }
-    .long-red-button {
+      }
+      .long-red-button {
         width: 150px;
         background-color: #ce0000; /* Red */
         border: 1px solid white;
@@ -106,13 +115,13 @@
         margin: 4px 8px;
         transition-duration: 0.4s;
         cursor: pointer;
-    }
-    .long-red-button:hover {
+      }
+      .long-red-button:hover {
         background-color: #930000;
-    }
-    .short-button {
+      }
+      .short-button {
         width: 50px;
-        background-color: #4CAF50; /* Green */
+        background-color: #4caf50; /* Green */
         border: 1px solid white;
         color: white;
         padding: 2px 6px;
@@ -122,43 +131,43 @@
         margin: 4px 2px;
         transition-duration: 0.4s;
         cursor: pointer;
-    }
-    .short-button:hover {
+      }
+      .short-button:hover {
         background-color: #3e8e41;
-    }
-    .hl-example {
+      }
+      .hl-example {
         font-size: 16px;
         margin: 4px 2px;
-    }
-    .small-header {
+      }
+      .small-header {
         font-size: 16px;
         margin: 4px 2px;
         font-weight: bold;
-    }
-    #words-block {
+      }
+      #words-block {
         margin: 4px 18px;
-    }
-    /* #idiomsBlock {
+      }
+      /* #idiomsBlock {
         margin: 4px 18px;
     } */
-    #debug-control {
+      #debug-control {
         display: none;
         margin: 4px 18px;
-    }
-    #sync-status-feedback {
+      }
+      #sync-status-feedback {
         display: none;
         color: #ce0000;
-    }
-    #last-sync-date {
+      }
+      #last-sync-date {
         display: none;
-    }
-    .radio-block {
+      }
+      .radio-block {
         margin: 4px 18px;
-    }
-    .wd-info {
+      }
+      .wd-info {
         font-size: 14px;
         margin: 4px 20px;
-    }
+      }
     </style>
     <title>Advanced Settings</title>
     <!-- <script src="../common_lib.js.js"></script> -->
@@ -167,116 +176,209 @@
     <script src="../scripts/options.js"></script>
   </head>
   <body>
-  <div id="debug-control" class="debug-controlBlock">
-    <input type="text" id="set-to-storage-key" class="dict-add-url"><input type="text" id="set-to-storage-val" class="dict-add-url"><button class="long-button" id="set-to-storage-btn">storage set dbg</button>
-    <br>
-    <input type="text" id="get-from-storage-key" class="dict-add-url"><button class="long-button" id="get-from-storage-btn">storage get dbg</button>
-    <br>
-    <button class="long-button" id="test-manifest-warnings-btn">view manifest warnings</button>
-  </div>
-  <fieldset>
-    <button class="long-button" id="save-vocab">__MSG_saveVocab__</button>
-    <button class="long-button" id="load-vocab">__MSG_loadVocab__</button>
-    <br>
-    <br>
-  </fieldset>
-  <br>
-  <fieldset>
-    <span class="small-header">Backup and sync with Google Drive.</span><a href="example.com" target="_blank" id="more-info-iink">More Info</a>
-    <br>
-    <br>
-    <button class="long-button" id="gd-sync-button">Synchronize Now</button>
-    <button class="long-red-button" id="gd-stop-sync-button">Stop Sync</button>
-    <br>
-    <br>
-    <div class="radio-block">
-      <span id="last-sync-date"></span>
-      <br>
-      <span id="sync-status-feedback"></span>
+    <div id="debug-control" class="debug-controlBlock section-block">
+      <input type="text" id="set-to-storage-key" class="dict-add-url" /><input
+        type="text"
+        id="set-to-storage-val"
+        class="dict-add-url"
+      /><button class="long-button" id="set-to-storage-btn">storage set dbg</button>
+      <br />
+      <input type="text" id="get-from-storage-key" class="dict-add-url" /><button
+        class="long-button"
+        id="get-from-storage-btn"
+      >
+        storage get dbg
+      </button>
+      <br />
+      <button class="long-button" id="test-manifest-warnings-btn">view manifest warnings</button>
     </div>
-    <br>
-  </fieldset>
-  <br>
+    <div class="section-block">
+      <button class="long-button" id="save-vocab">__MSG_saveVocab__</button>
+      <button class="long-button" id="load-vocab">__MSG_loadVocab__</button>
+      <br />
+      <br />
+    </div>
+    <div class="section-block">
+      <span class="small-header">Backup and sync with Google Drive.</span
+      ><a href="example.com" target="_blank" id="more-info-link">More Info</a>
+      <br />
+      <br />
+      <button class="long-button" id="gd-sync-button">Synchronize Now</button>
+      <button class="long-red-button" id="gd-stop-sync-button">Stop Sync</button>
+      <br />
+      <br />
+      <div class="radio-block">
+        <span id="last-sync-date"></span>
+        <br />
+        <span id="sync-status-feedback"></span>
+      </div>
+      <br />
+    </div>
 
-  <!--pronunciation section-->
-  <div id="adjust-pronunciation-section">
-      <fieldset>
-          <span class="small-header">Adjust Pronunciation</span><br>
-          <input type="checkbox" id="pronunciation-enabled"/>Enable Auto Pronunciation
-      </fieldset>
-  </div>
-  <br>
-
-  <div id="adjust-bubble-section">
-    <fieldset>
-          <span class="small-header">__MSG_adjustPopupHlHeader__</span><br>
-          <br>
-          <form>
-          <input type="radio" name="hlBubble" id="hlb-never"><span class="cb-label">__MSG_rbNever__</span><br>
-          <input type="radio" name="hlBubble" id="hlb-key"><span class="cb-label">__MSG_rbKey__</span><br>
-          <input type="radio" name="hlBubble" id="hlb-always"><span class="cb-label">__MSG_rbAlways__</span><br>
-          </form>
-        <br>
-        <br>
-          <span class="small-header">__MSG_adjustPopupOwHeader__</span><br>
-          <br>
-          <form>
-          <input type="radio" name="owBubble" id="owb-never"><span class="cb-label">__MSG_rbNever__</span><br>
-          <input type="radio" name="owBubble" id="owb-key"><span class="cb-label">__MSG_rbKey__</span><br>
-          <input type="radio" name="owBubble" id="owb-always"><span class="cb-label">__MSG_rbAlways__</span><br>
-          </form>
-    </fieldset>
-  </div>
-  <br>
-  <div id="adjust-online-dicts-section">
-    <fieldset>
-        <span class="small-header">__MSG_adjustOnlineDicts__</span><br>
-        <br>
-        <span class="dict-name-header">__MSG_dictNameHeader__</span><span class="dict-url-header">__MSG_dictUrlHeader__</span><br>
-        <div id="existing-dicts-block">
-        </div>
-        <input type="text" id="add-dict-name" class="dict-add-name"><input type="text" id="add-dict-url" class="dict-add-url"><button class="short-button" id="test-new-dict">__MSG_testBtn__</button><button class="imgButton" id="add-dict"><img src="../images/add.png"></button><br>
-        <button class="long-button" id="default-dicts">__MSG_restoreDefaults__</button>
-    </fieldset>
-  </div>
-  <br>
-  <div id="adjust-section">
-    <fieldset>
-      <span class="small-header">__MSG_adjustColorsHeader__</span><br>
-      <br>
-      <input type="checkbox" class="checkbox" id="words-enabled"><span class="cbHeaderLabel">__MSG_enableWordsLabel__</span><br>
+    <!--pronunciation section-->
+    <!-- id="adjust-pronunciation-section" -->
+    <div class="section-block">
+      <!-- <fieldset> -->
+      <div class="small-header">Adjust Pronunciation</div>
+      <div style="display: flex; align-items: center;">
+        <input type="radio" name="pronunciation" id="pronunciation-enabled" />
+        <label for="pronunciation" style="margin-left: 2px;">Enable Auto Pronunciation</label>
+      </div>
+      <!-- </fieldset> -->
+    </div>
+    <!-- id="adjust-bubble-section" -->
+    <div class="section-block">
+      <div class="small-header">__MSG_adjustPopupHlHeader__</div>
+      <form style="margin-bottom: 20px;">
+        <ul class="adjust-popup-list">
+          <li>
+            <input type="radio" name="hlBubble" id="hlb-never" /><label class="cb-label"
+              >__MSG_rbNever__</label
+            >
+          </li>
+          <li>
+            <input type="radio" name="hlBubble" id="hlb-key" /><label class="cb-label"
+              >__MSG_rbKey__</label
+            >
+          </li>
+          <li>
+            <input type="radio" name="hlBubble" id="hlb-always" /><label class="cb-label"
+              >__MSG_rbAlways__</label
+            >
+          </li>
+        </ul>
+      </form>
+      <div class="small-header">__MSG_adjustPopupOwHeader__</div>
+      <form>
+        <ul class="adjust-popup-list">
+          <li>
+            <input type="radio" name="owBubble" id="owb-never" /><label class="cb-label"
+              >__MSG_rbNever__</label
+            >
+          </li>
+          <li>
+            <input type="radio" name="owBubble" id="owb-key" /><label class="cb-label"
+              >__MSG_rbKey__</label
+            >
+          </li>
+          <li>
+            <input type="radio" name="owBubble" id="owb-always" /><label class="cb-label"
+              >__MSG_rbAlways__</label
+            >
+          </li>
+        </ul>
+      </form>
+      <!-- </fieldset> -->
+    </div>
+    <!-- id="adjust-online-dicts-section" -->
+    <div class="section-block">
+      <!-- <fieldset> -->
+      <div class="small-header">__MSG_adjustOnlineDicts__</div>
+      <div>
+        <span class="dict-name-header">__MSG_dictNameHeader__</span
+        ><span class="dict-url-header">__MSG_dictUrlHeader__</span>
+      </div>
+      <div id="existing-dicts-block" style="display: flex; flex-direction: column;"></div>
+      <div class="dict-block">
+        <input type="text" id="add-dict-name" class="dict-name dict-add-name" /><input
+          type="text"
+          id="add-dict-url"
+          class="dict-url dict-add-url"
+        /><button class="short-button" id="test-new-dict">__MSG_testBtn__</button
+        ><button class="img-button" id="add-dict"><img src="../images/add.png" /></button>
+      </div>
+      <button class="long-button" id="default-dicts">__MSG_restoreDefaults__</button>
+      <!-- </fieldset> -->
+    </div>
+    <!-- id="adjust-section" -->
+    <div class="section-block">
+      <!-- <fieldset> -->
+      <span class="small-header">__MSG_adjustColorsHeader__</span><br />
+      <br />
+      <input type="checkbox" class="checkbox" id="words-enabled" /><span class="cb-header-label"
+        >__MSG_enableWordsLabel__</span
+      ><br />
       <div id="words-block">
-        <input type="checkbox" class="checkbox" id="words-bold"><span class="cb-label">__MSG_useBold__</span><br>
-        <input type="checkbox" class="checkbox" id="words-color"><span class="cb-label">__MSG_useText__</span><br>
+        <input type="checkbox" class="checkbox" id="words-bold" /><span class="cb-label"
+          >__MSG_useBold__</span
+        ><br />
+        <input type="checkbox" class="checkbox" id="words-color" /><span class="cb-label"
+          >__MSG_useText__</span
+        ><br />
         <div id="wc-radio-block" class="radio-block">
-          <formic1>
-          <input type="radio" name="wordColor" id="wc1"><label for="wc1" style="color:red; background-color:red">___</label>
-          <input type="radio" name="wordColor" id="wc2"><label for="wc2" style="color:green; background-color:green">___</label>
-          <input type="radio" name="wordColor" id="wc3"><label for="wc3" style="color:blue; background-color:blue">___</label>
-          <input type="radio" name="wordColor" id="wc4"><label for="wc4" style="color:yellow; background-color:yellow">___</label>
-          <input type="radio" name="wordColor" id="wc5"><label for="wc5" style="color:black; background-color:black">___</label>
+          <form>
+            <input type="radio" name="wordColor" id="wc1" /><label
+              for="wc1"
+              style="color: red; background-color: red;"
+              >___</label
+            >
+            <input type="radio" name="wordColor" id="wc2" /><label
+              for="wc2"
+              style="color: green; background-color: green;"
+              >___</label
+            >
+            <input type="radio" name="wordColor" id="wc3" /><label
+              for="wc3"
+              style="color: blue; background-color: blue;"
+              >___</label
+            >
+            <input type="radio" name="wordColor" id="wc4" /><label
+              for="wc4"
+              style="color: yellow; background-color: yellow;"
+              >___</label
+            >
+            <input type="radio" name="wordColor" id="wc5" /><label
+              for="wc5"
+              style="color: black; background-color: black;"
+              >___</label
+            >
           </form>
         </div>
-        <input type="checkbox" class="checkbox" id="words-background"><span class="cb-label">__MSG_useBackground__</span><br>
+        <input type="checkbox" class="checkbox" id="words-background" /><span class="cb-label"
+          >__MSG_useBackground__</span
+        ><br />
         <div id="wb-radio-block" class="radio-block">
           <form>
-          <input type="radio" name="wordBackground" id="wb1"><label for="wb1" style="color:#fff8dc; background-color:#fff8dc">___</label>
-          <input type="radio" name="wordBackground" id="wb2"><label for="wb2" style="color:#d2d2ff; background-color:#d2d2ff">___</label>
-          <input type="radio" name="wordBackground" id="wb3"><label for="wb3" style="color:#d2ffd2; background-color:#d2ffd2">___</label>
-          <input type="radio" name="wordBackground" id="wb4"><label for="wb4" style="color:#c8ffff; background-color:#c8ffff">___</label>
-          <input type="radio" name="wordBackground" id="wb5"><label for="wb5" style="color:#ffffff; background-color:#ffffff">___</label>
+            <input type="radio" name="wordBackground" id="wb1" /><label
+              for="wb1"
+              style="color: #fff8dc; background-color: #fff8dc;"
+              >___</label
+            >
+            <input type="radio" name="wordBackground" id="wb2" /><label
+              for="wb2"
+              style="color: #d2d2ff; background-color: #d2d2ff;"
+              >___</label
+            >
+            <input type="radio" name="wordBackground" id="wb3" /><label
+              for="wb3"
+              style="color: #d2ffd2; background-color: #d2ffd2;"
+              >___</label
+            >
+            <input type="radio" name="wordBackground" id="wb4" /><label
+              for="wb4"
+              style="color: #c8ffff; background-color: #c8ffff;"
+              >___</label
+            >
+            <input type="radio" name="wordBackground" id="wb5" /><label
+              for="wb5"
+              style="color: #ffffff; background-color: #ffffff;"
+              >___</label
+            >
           </form>
         </div>
-        <br>
-        <br>
-        <span class="hl-example">Example of <span id="wql"></span><span id="word-hl-text">highlighted</span><span id="wqr"></span> English word.</span><br>
-        <br>
+        <br />
+        <br />
+        <span class="hl-example"
+          >Example of <span id="wql"></span><span id="word-hl-text">highlighted</span
+          ><span id="wqr"></span> English word.</span
+        ><br />
+        <br />
       </div>
       <!-- <br> -->
       <!-- <br> -->
       <!-- <br> -->
 
-      <!-- <input type="checkbox" class="checkbox" id="idiomsEnabled"><span class="cbHeaderLabel">__MSG_enableIdiomsLabel__</span><br> -->
+      <!-- <input type="checkbox" class="checkbox" id="idiomsEnabled"><span class="cb-header-label">__MSG_enableIdiomsLabel__</span><br> -->
       <!-- <div id="idiomsBlock">
         <input type="checkbox" class="checkbox" id="idiomsBold"><span class="cb-label">__MSG_useBold__</span><br>
         <input type="checkbox" class="checkbox" id="idiomsColor"><span class="cb-label">__MSG_useText__</span><br>
@@ -305,7 +407,6 @@
         <br>
       </div> -->
       <button class="long-button" id="save-visuals">__MSG_saveVisuals__</button>
-    </fieldset>
-  </div>
+    </div>
   </body>
 </html>

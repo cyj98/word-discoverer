@@ -178,16 +178,16 @@ const isoLangs = {
   za: 'Zhuang',
 };
 
-export function getDictDefinitionUrl(dictUrl, text) {
+export const getDictDefinitionUrl = (dictUrl, text) => {
   return dictUrl + encodeURIComponent(text);
-}
+};
 
-function showDefinition(dictUrl, text) {
+const showDefinition = (dictUrl, text) => {
   const fullUrl = getDictDefinitionUrl(dictUrl, text);
   browser.tabs.create({ url: fullUrl });
-}
+};
 
-function createDictionaryEntry(title, dictUrl, entryId) {
+const createDictionaryEntry = (title, dictUrl, entryId) => {
   browser.contextMenus.create({
     title,
     contexts: ['selection'],
@@ -197,25 +197,25 @@ function createDictionaryEntry(title, dictUrl, entryId) {
       showDefinition(dictUrl, word);
     },
   });
-}
+};
 
-function contextHandleAddResult(report, lemma) {
+const contextHandleAddResult = (report, lemma) => {
   if (report === 'ok' || report === 'exists') {
     requestUnhighlight(lemma);
   }
-}
+};
 
-function onClickHandler(info) {
+const onClickHandler = (info) => {
   const word = info.selectionText;
   addLexeme(word, contextHandleAddResult);
-}
+};
 
-function ttsHandler(info) {
-  const word = info.selectionText;
-  browser.tts.speak(word, { lang: 'ja' });
-}
+const ttsHandler = (info) => {
+  const utterance = new SpeechSynthesisUtterance(info.selectionText);
+  speechSynthesis.speak(utterance);
+};
 
-export function makeDefaultOnlineDicts() {
+export const makeDefaultOnlineDicts = () => {
   const result = [];
 
   let uiLang = browser.i18n.getUILanguage();
@@ -241,32 +241,31 @@ export function makeDefaultOnlineDicts() {
     url: 'https://encrypted.google.com/search?hl=en&gl=en&tbm=isch&q=',
   });
   return result;
-}
+};
 
-export function initContextMenus(dictPairs) {
-  browser.contextMenus.removeAll().then(() => {
-    const title = browser.i18n.getMessage('menuItem');
-    browser.contextMenus.create({
-      title,
-      contexts: ['selection'],
-      id: 'vocab_select_add',
-      onclick: onClickHandler,
-    });
-    browser.contextMenus.create({
-      title: 'Audio',
-      contexts: ['selection'],
-      id: 'vocab_tts',
-      onclick: ttsHandler,
-    });
-    browser.contextMenus.create({
-      type: 'separator',
-      contexts: ['selection'],
-      id: 'wd_separator_id',
-    });
-    if (dictPairs) {
-      for (let i = 0; i < dictPairs.length; i += 1) {
-        createDictionaryEntry(dictPairs[i].title, dictPairs[i].url, `wd_define_${i}`);
-      }
-    }
+export const initContextMenus = async (dictPairs) => {
+  await browser.contextMenus.removeAll();
+  const title = browser.i18n.getMessage('menuItem');
+  browser.contextMenus.create({
+    title,
+    contexts: ['selection'],
+    id: 'vocab_select_add',
+    onclick: onClickHandler,
   });
-}
+  browser.contextMenus.create({
+    title: 'Audio',
+    contexts: ['selection'],
+    id: 'vocab_tts',
+    onclick: ttsHandler,
+  });
+  browser.contextMenus.create({
+    type: 'separator',
+    contexts: ['selection'],
+    id: 'wd_separator_id',
+  });
+  if (dictPairs) {
+    for (let i = 0; i < dictPairs.length; i += 1) {
+      createDictionaryEntry(dictPairs[i].title, dictPairs[i].url, `wd_define_${i}`);
+    }
+  }
+};
