@@ -17,3 +17,4 @@ Another way to help users is to highlight idioms, which sometimes can be very ha
 
 - a new page to analyse unknown words in text, subtitle and pdf
 - set upper limit
+- add typescript support

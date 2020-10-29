@@ -27,12 +27,12 @@ let functionKeyIsPressed = false;
 let renderedNodeId = null;
 let nodeToRenderId = null;
 
-const limitTextLen = (word) => {
+const formatOriginalWord = (word) => {
   if (!word) return word;
-  // word = word.toLowerCase();
   const maxLen = 20;
-  if (word.length <= maxLen) return word;
-  return `${word.slice(0, maxLen)}...`;
+  const newWord = word.replace(/-/g, ' ');
+  if (newWord.length <= maxLen) return newWord;
+  return `${newWord.slice(0, maxLen)}...`;
 };
 
 const getHeatColorPoint = (freqPercentOld) => {
@@ -130,7 +130,7 @@ const textToHlNodes = (textNode) => {
             };
             // console.log(idiomPrefix);
             textStyle = makeHlStyle(highlightSettings.idiomParams);
-            className = idiomFound;
+            className = idiomFound.replace(/ /g, '-');
             wordBeginIndex += idiomPrefix.length + 1;
             wordNumber = lookAheadWordNumber + 1;
           } else {
@@ -225,14 +225,12 @@ const textNodesUnder = (node) => {
 };
 
 const unhighlight = (lemma) => {
-  const hlNodes = document.querySelectorAll(`[class^=${classNamePrefix}_${lemma}]`);
-  // for (const hlNode of hlNodes) {
+  const hlNodes = document.querySelectorAll(
+    `[class^=${classNamePrefix}_${lemma.replace(/ /g, '-')}]`,
+  );
   hlNodes.forEach((hlNode) => {
-    // eslint-disable-next-line no-param-reassign
-    hlNode.style =
-      'font-weight:inherit;color:inherit;font-size:inherit;background-color:inherit;display:inline;';
-    // eslint-disable-next-line no-param-reassign
-    hlNode.className = `${classNamePrefix}_none_none`;
+    hlNode.removeAttribute('style');
+    hlNode.setAttribute('class', `${classNamePrefix}_none_none`);
   });
 };
 
@@ -344,9 +342,11 @@ const renderBubble = () => {
   const bubbleDOM = shadow.getElementById('wd-selection-bubble');
   const bubbleText = shadow.getElementById('wd-selection-bubble-text');
   const bubbleFreq = shadow.getElementById('wd-selection-bubble-freq');
-  [, currentLexeme, bubbleFreq.textContent] = className.split('_');
-  bubbleText.textContent = limitTextLen(currentLexeme);
-  if (bubbleFreq.textContent) {
+  const [, lexeme, rankAndCount] = className.split('_');
+  currentLexeme = formatOriginalWord(lexeme);
+  bubbleText.textContent = currentLexeme;
+  if (rankAndCount) {
+    bubbleFreq.textContent = rankAndCount;
     const [rank] = bubbleFreq.textContent.split(':');
     bubbleFreq.style.backgroundColor = getHeatColorPoint((rank / dictWords.length) * 100);
     bubbleFreq.style.visibility = 'visible';
