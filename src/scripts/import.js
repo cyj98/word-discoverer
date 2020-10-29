@@ -16,26 +16,25 @@ const parseVocabulary = (text) => {
 };
 
 const addNewWords = async (newWords) => {
-  const result = await browser.storage.local.get([
-    'wdUserVocabulary',
-    'wdUserVocabAdded',
-    'wdUserVocabDeleted',
+  const { userVocabulary, userVocabAdded, userVocabDeleted } = await browser.storage.local.get([
+    'userVocabulary',
+    'userVocabAdded',
+    'userVocabDeleted',
   ]);
-  const { wdUserVocabulary, wdUserVocabAdded, wdUserVocabDeleted } = result;
   let numAdded = 0;
-  const newState = { wdUserVocabulary };
+  const newState = { userVocabulary };
   for (let i = 0; i < newWords.length; i += 1) {
     const word = newWords[i];
-    if (!Object.prototype.hasOwnProperty.call(wdUserVocabulary, word)) {
-      wdUserVocabulary[word] = 1;
+    if (!Object.prototype.hasOwnProperty.call(userVocabulary, word)) {
+      userVocabulary[word] = 1;
       numAdded += 1;
-      if (typeof wdUserVocabAdded !== 'undefined') {
-        wdUserVocabAdded[word] = 1;
-        newState.wdUserVocabAdded = wdUserVocabAdded;
+      if (typeof userVocabAdded !== 'undefined') {
+        userVocabAdded[word] = 1;
+        newState.userVocabAdded = userVocabAdded;
       }
-      if (typeof wdUserVocabDeleted !== 'undefined') {
-        delete wdUserVocabDeleted[word];
-        newState.wdUserVocabDeleted = wdUserVocabDeleted;
+      if (typeof userVocabDeleted !== 'undefined') {
+        delete userVocabDeleted[word];
+        newState.userVocabDeleted = userVocabDeleted;
       }
     }
   }

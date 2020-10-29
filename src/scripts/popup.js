@@ -19,8 +19,7 @@ const displayMode = async () => {
     document.getElementById('add-to-list-label').href = browser.extension.getURL(
       '../html/black_list.html',
     );
-    const result = await browser.storage.local.get(['wdBlackList']);
-    const blackList = result.wdBlackList;
+    const { blackList } = await browser.storage.local.get(['blackList']);
     document.getElementById('add-to-list').checked = Object.prototype.hasOwnProperty.call(
       blackList,
       domain,
@@ -35,8 +34,7 @@ const displayMode = async () => {
     document.getElementById('add-to-list-label').href = browser.extension.getURL(
       '../html/white_list.html',
     );
-    const result = await browser.storage.local.get(['wdWhiteList']);
-    const whiteList = result.wdWhiteList;
+    const { whiteList } = await browser.storage.local.get(['whiteList']);
     document.getElementById('add-to-list').checked = Object.prototype.hasOwnProperty.call(
       whiteList,
       domain,
@@ -47,7 +45,7 @@ const displayMode = async () => {
 // TODO: check this two display_mode()?
 const processCheckbox = async () => {
   const checkboxElem = document.getElementById('add-to-list');
-  const listName = enabledMode ? 'wdBlackList' : 'wdWhiteList';
+  const listName = enabledMode ? 'blackList' : 'whiteList';
 
   const tabs = await browser.tabs.query({ active: true, currentWindow: true });
   const domain = new URL(tabs[0].url).hostname;
@@ -65,7 +63,7 @@ const processCheckbox = async () => {
 
 const processModeSwitch = () => {
   enabledMode = !enabledMode;
-  browser.storage.local.set({ wdIsEnabled: enabledMode });
+  browser.storage.local.set({ enabledMode });
   displayMode();
 };
 
@@ -86,9 +84,8 @@ const processAdjust = () => {
 };
 
 const displayVocabularySize = async () => {
-  const result = await browser.storage.local.get(['wdUserVocabulary']);
-  const { wdUserVocabulary } = result;
-  const vocabSize = Object.keys(wdUserVocabulary).length;
+  const { userVocabulary } = await browser.storage.local.get(['userVocabulary']);
+  const vocabSize = Object.keys(userVocabulary).length;
   document.getElementById('vocab-indicator').textContent = vocabSize;
 };
 
@@ -108,12 +105,12 @@ const popupHandleAddResult = (report, lemma) => {
 const processAddWord = () => {
   const lexeme = document.getElementById('add-text').value;
   if (lexeme === 'dev-mode-on') {
-    browser.storage.local.set({ wdDeveloperMode: true });
+    browser.storage.local.set({ developerModeEnabled: true });
     document.getElementById('add-text').value = '';
     return;
   }
   if (lexeme === 'dev-mode-off') {
-    browser.storage.local.set({ wdDeveloperMode: false });
+    browser.storage.local.set({ developerModeEnabled: false });
     document.getElementById('add-text').value = '';
     return;
   }
@@ -121,13 +118,13 @@ const processAddWord = () => {
 };
 
 const processRate = async (increase) => {
-  const result = await browser.storage.local.get(['wdMinimunRank']);
-  const minimunRank = result.wdMinimunRank + increase > 0 ? result.wdMinimunRank + increase : 0;
+  const { minimunRank } = await browser.storage.local.get(['minimunRank']);
+  const newMinimunRank = minimunRank + increase > 0 ? minimunRank + increase : 0;
   // minimunRank += increase;
   // minimunRank = Math.min(100, Math.max(0, show_percents));
   // display_percents(minimunRank);
-  document.getElementById('count-indicator').textContent = minimunRank;
-  browser.storage.local.set({ wdMinimunRank: minimunRank });
+  document.getElementById('count-indicator').textContent = newMinimunRank;
+  browser.storage.local.set({ minimunRank: newMinimunRank });
 };
 
 const processRateM100 = () => {
@@ -171,11 +168,11 @@ const initControls = async () => {
 
   displayVocabularySize();
 
-  const result = await browser.storage.local.get(['wdMinimunRank', 'wdIsEnabled']);
+  const result = await browser.storage.local.get(['minimunRank', 'enabledMode']);
   // var show_percents = result.wd_show_percents;
-  enabledMode = result.wdIsEnabled;
+  enabledMode = result.enabledMode;
   // dict_size = result.wd_word_max_rank;
-  document.getElementById('count-indicator').textContent = result.wdMinimunRank;
+  document.getElementById('count-indicator').textContent = result.minimunRank;
   // display_percents(show_percents);
   displayMode();
 };

@@ -1,23 +1,21 @@
 import browser from 'webextension-polyfill';
-import nlp from 'compromise';
+// import nlp from 'compromise';
 import { makeHlStyle, addLexeme } from './lib/common_lib';
 import { getDictDefinitionUrl } from './lib/context_menu_lib';
 import contentScriptStyle from '../styles/content_script.css';
 
 const classNamePrefix = 'wdautohlen';
 const haveEnglishRegex = /[-a-zA-Z]/;
-// const beginWithEnglishRegex = /^[a-z][a-z]*$/;
+const beginWithEnglishRegex = /^[a-z][a-z]*$/;
 let dictWords;
-// let dictIdoms;
+let dictIdioms;
 
 let userVocabulary = [];
-let wdMinimunRank = 1;
-let wdHlSettings = null;
-let wdHoverSettings = null;
-let wdOnlineDicts = null;
-let wdEnableTTS = null;
-
-let wordMaxRank = 0;
+let minimunRank = 1;
+let highlightSettings = null;
+let hoverSettings = null;
+let onlineDicts = null;
+let ttsEnabled = null;
 
 // let disableByKeypress = false;
 
@@ -69,118 +67,112 @@ const goodNodeFilter = (node) => {
 const getRareLemma = (word) => {
   if (!userVocabulary) return undefined;
   if (word.length < 3) return undefined;
-  let lemma = word;
-  // if (!word.includes('-')) {
-  //   const wordNlp = nlp(word);
-  //   const wordTags = Object.values(wordNlp.out('tags')[0])[0];
-  //   if (wordTags.indexOf('Verb') !== -1 && wordTags.indexOf('Infinitive') === -1) {
-  //     lemma = wordNlp.verbs().toInfinitive().all().text();
-  //   }
-  //   if (wordTags.indexOf('Plural') !== -1) {
-  //     lemma = wordNlp.nouns().toSingular().all().text();
-  //   }
-  // }
-  const wordFound = dictWords[lemma];
-  if (!wordFound || wordFound.rank < wdMinimunRank) return undefined;
-  wordFound.word = lemma;
-  return !Object.prototype.hasOwnProperty.call(userVocabulary, lemma) ? wordFound : undefined;
+  const wordFound = dictWords[word];
+  if (!wordFound || wordFound.rank < minimunRank) return undefined;
+  wordFound.word = word;
+  return !Object.prototype.hasOwnProperty.call(userVocabulary, wordFound.lemma)
+    ? wordFound
+    : undefined;
 };
 
 const textToHlNodes = (textNode) => {
   const { parentElement, textContent } = textNode;
-  const lowercaseText = textContent.toLowerCase();
+  // const lowercaseText = textContent.toLowerCase();
   // let wsText = lcText.replace(/[,;()?!`:"'.\s\-\u2013\u2014\u201C\u201D\u2019]/g, ' ');
-  const wsText = lowercaseText.replace(/[^\w- ']/g, ' ');
+  // const wsText = lowercaseText.replace(/[^\w- ']/g, ' ');
   // wsText = wsText.replace(/[^\w ]/g, '.');
 
-  const tokens = wsText.split(' ');
+  const tokens = textContent.replace(/[^\w- ']/g, ' ').split(' ');
 
-  // let foundWordsCount = 0;
-  // let nonEmptyWordsCount = 0;
-  let wordBeginIndex = 0; // beginning of word
+  let wordBeginIndex = 0;
   let wordNumber = 0;
 
-  // const tokenizeOther = wdHoverSettings.ow_hover !== 'never';
+  const tokenizeOther = hoverSettings.ow_hover !== 'never';
 
   let lastEndPos = 0;
   let newTextNode = textNode;
   while (wordNumber < tokens.length) {
     if (tokens[wordNumber].length) {
-      // nonEmptyWordsCount += 1;
       let match;
       let textStyle;
       let className;
-      // if (!match && wdHlSettings.idiomParams.enabled) {
-      //   let lwnum = wnum; // look ahead word number
-      //   let libegin = ibegin; // look ahead word begin
-      //   let mwePrefix = '';
-      //   while (lwnum < tokens.length) {
-      //     mwePrefix += tokens[lwnum];
-      //     let wf;
-      //     if (Object.prototype.hasOwnProperty.call(dictIdoms, mwePrefix)) {
-      //       wf = dictIdoms[mwePrefix];
-      //     }
-      //     if (wf === -1 && (!libegin || text[libegin - 1] === ' ')) {
-      //       // idiom prefix found
-      //       mwePrefix += ' ';
-      //       libegin += tokens[lwnum].length + 1;
-      //       lwnum += 1;
-      //     } else if (wf && wf !== -1 && (!libegin || text[libegin - 1] === ' ')) {
-      //       // idiom found
-      //       if (userVocabulary && Object.prototype.hasOwnProperty.call(userVocabulary, wf)) break;
-      //       match = {
-      //         normalized: wf,
-      //         kind: 'idiom',
-      //         begin: ibegin,
-      //         end: ibegin + mwePrefix.length,
-      //       };
-      //       ibegin += mwePrefix.length + 1;
-      //       numGood += lwnum - wnum + 1;
-      //       wnum = lwnum + 1;
-      //     } else {
-      //       // idiom not found
-      //       break;
-      //     }
-      //   }
-      // }
-      if (!match && wdHlSettings.wordParams.enabled) {
-        const wordFound = getRareLemma(tokens[wordNumber]);
-        if (wordFound && wordFound.word) {
+      if (!match && highlightSettings.idiomParams.enabled) {
+        let lookAheadWordNumber = wordNumber;
+        let lookAheadWordBeginIndex = wordBeginIndex;
+        let idiomPrefix = '';
+        while (lookAheadWordNumber < tokens.length) {
+          idiomPrefix += tokens[lookAheadWordNumber];
+          let idiomFound;
+          if (Object.prototype.hasOwnProperty.call(dictIdioms, idiomPrefix.toLocaleLowerCase())) {
+            idiomFound = dictIdioms[idiomPrefix.toLocaleLowerCase()];
+          }
+          if (
+            idiomFound === -1 &&
+            (!lookAheadWordBeginIndex || textContent[lookAheadWordBeginIndex - 1] === ' ')
+          ) {
+            // idiom prefix found
+            idiomPrefix += ' ';
+            lookAheadWordBeginIndex += tokens[lookAheadWordNumber].length + 1;
+            lookAheadWordNumber += 1;
+          } else if (
+            idiomFound &&
+            idiomFound !== -1 &&
+            (!lookAheadWordBeginIndex || textContent[lookAheadWordBeginIndex - 1] === ' ')
+          ) {
+            // idiom found
+            if (userVocabulary && Object.prototype.hasOwnProperty.call(userVocabulary, idiomFound))
+              break;
+            match = {
+              original: idiomPrefix,
+              // kind: 'idiom',
+              begin: wordBeginIndex,
+              // end: wordBeginIndex + idiomPrefix.length,
+            };
+            // console.log(idiomPrefix);
+            textStyle = makeHlStyle(highlightSettings.idiomParams);
+            className = idiomFound;
+            wordBeginIndex += idiomPrefix.length + 1;
+            wordNumber = lookAheadWordNumber + 1;
+          } else {
+            // idiom not found
+            break;
+          }
+        }
+      }
+      if (!match && highlightSettings.wordParams.enabled) {
+        const wordFound = getRareLemma(tokens[wordNumber].toLowerCase());
+        if (wordFound) {
           match = {
             original: tokens[wordNumber],
-            normalized: wordFound.word,
-            kind: 'lemma',
+            // normalized: wordFound.lemma,
+            // kind: 'lemma',
             begin: wordBeginIndex,
             // end: ibegin + tokens[wnum].length,
-            rank: wordFound.rank,
-            frequency: wordFound.total,
+            // rank: wordFound.rank,
+            // count: wordFound.count,
           };
           wordBeginIndex += tokens[wordNumber].length + 1;
           wordNumber += 1;
-          // foundWordsCount += 1;
-          const hlParams = wdHlSettings.wordParams;
-          textStyle = makeHlStyle(hlParams);
-          className = `${match.normalized}_${match.rank}:${match.frequency}`;
+          textStyle = makeHlStyle(highlightSettings.wordParams);
+          className = `${wordFound.lemma}_${wordFound.rank}:${wordFound.count}`;
         }
       }
-      // if (
-      //   tokenizeOther &&
-      //   !match &&
-      //   tokens[wnum].length >= 3 &&
-      //   beginWithEnglishRegex.test(tokens[wnum])
-      // ) {
-      //   match = {
-      //     normalized: null,
-      //     kind: 'other',
-      //     begin: ibegin,
-      //     end: ibegin + tokens[wnum].length,
-      //   };
-      //   ibegin += tokens[wnum].length + 1;
-      //   wnum += 1;
-      // }
-      // if (Object.prototype.hasOwnProperty.call(dictWords, tokens[wordNumber])) {
-      //   foundWordsCount += 1;
-      // }
+      if (
+        tokenizeOther &&
+        !match &&
+        tokens[wordNumber].length >= 3 &&
+        beginWithEnglishRegex.test(tokens[wordNumber])
+      ) {
+        match = {
+          original: tokens[wordNumber],
+          // kind: 'other',
+          begin: wordBeginIndex,
+        };
+        textStyle = 'font:inherit;display:inline;color:inherit;background-color:inherit;';
+        className = match.original;
+        wordBeginIndex += tokens[wordNumber].length + 1;
+        wordNumber += 1;
+      }
       if (match) {
         parentElement.classList.add(classNamePrefix);
         const span = document.createElement('span');
@@ -202,13 +194,10 @@ const textToHlNodes = (textNode) => {
       wordBeginIndex += 1;
     }
   }
-  // if ((foundWordsCount * 1.0) / nonEmptyWordsCount < 0.1) {
-  //   return;
-  // }
 };
 
 const doHighlightText = (textNode) => {
-  if (textNode.nodeType !== Node.TEXT_NODE || dictWords === null || wdMinimunRank === null) return;
+  if (textNode.nodeType !== Node.TEXT_NODE || dictWords === null || minimunRank === null) return;
   const { parentElement, textContent } = textNode;
   if (!parentElement) return;
   if (textContent.length <= 3) return;
@@ -314,7 +303,7 @@ const createBubble = () => {
   bubbleDOM.appendChild(speakButton);
 
   // dictPairs = makeDictionaryPairs();
-  const dictPairs = wdOnlineDicts;
+  const dictPairs = onlineDicts;
   for (let i = 0; i < dictPairs.length; i += 1) {
     const dictButton = document.createElement('button');
     dictButton.className = 'wd-add-button';
@@ -346,7 +335,7 @@ const renderBubble = () => {
   const { className } = nodeToRender;
   const isHighlighted = className !== `${classNamePrefix}_none_none`;
   const paramKey = isHighlighted ? 'hl_hover' : 'ow_hover';
-  const paramValue = wdHoverSettings[paramKey];
+  const paramValue = hoverSettings[paramKey];
   if (paramValue === 'never' || (paramValue === 'key' && !functionKeyIsPressed)) {
     return;
   }
@@ -357,15 +346,20 @@ const renderBubble = () => {
   const bubbleFreq = shadow.getElementById('wd-selection-bubble-freq');
   [, currentLexeme, bubbleFreq.textContent] = className.split('_');
   bubbleText.textContent = limitTextLen(currentLexeme);
-  const [rank] = bubbleFreq.textContent.split(':');
-  bubbleFreq.style.backgroundColor = getHeatColorPoint((rank / wordMaxRank) * 100);
+  if (bubbleFreq.textContent) {
+    const [rank] = bubbleFreq.textContent.split(':');
+    bubbleFreq.style.backgroundColor = getHeatColorPoint((rank / dictWords.length) * 100);
+    bubbleFreq.style.visibility = 'visible';
+  } else {
+    bubbleFreq.style.visibility = 'hidden';
+  }
   const bcr = nodeToRender.getBoundingClientRect();
   bubbleDOM.style.top = `${bcr.bottom}px`;
   bubbleDOM.style.left = `${Math.max(5, Math.floor((bcr.left + bcr.right) / 2) - 100)}px`;
   bubbleDOM.style.display = 'block';
   renderedNodeId = nodeToRenderId;
 
-  if (wdEnableTTS) {
+  if (ttsEnabled) {
     const utterance = new SpeechSynthesisUtterance(currentLexeme);
     speechSynthesis.speak(utterance);
   }
@@ -373,7 +367,9 @@ const renderBubble = () => {
 
 const processHlLeave = () => {
   nodeToRenderId = null;
-  if (renderedNodeId) hideBubble(false);
+  setTimeout(() => {
+    if (renderedNodeId) hideBubble(false);
+  }, 300);
 };
 
 const processMouse = (e) => {
@@ -383,20 +379,25 @@ const processMouse = (e) => {
     return;
   }
   const { className } = hitNode;
-  console.log(className);
-  if (!className || !className.startsWith(classNamePrefix)) {
-    processHlLeave();
-    return;
+  try {
+    if (!className || !className.startsWith(classNamePrefix)) {
+      processHlLeave();
+      return;
+    }
+  } catch (err) {
+    console.error(err);
+    console.log(className);
   }
+
   nodeToRenderId = hitNode.id;
   renderBubble();
 };
 
-const getVerdict = (isEnabled, wdBlackList, wdWhiteList, hostname) => {
-  if (Object.prototype.hasOwnProperty.call(wdBlackList, hostname)) {
+const getVerdict = (isEnabled, blackList, whiteList, hostname) => {
+  if (Object.prototype.hasOwnProperty.call(blackList, hostname)) {
     return 'site in "Skip List"';
   }
-  if (Object.prototype.hasOwnProperty.call(wdWhiteList, hostname)) {
+  if (Object.prototype.hasOwnProperty.call(whiteList, hostname)) {
     return 'highlight';
   }
   return isEnabled ? 'highlight' : 'site is not in "Favorites List"';
@@ -407,32 +408,34 @@ const initForPage = async () => {
 
   const result = await browser.storage.local.get([
     'dictWords',
-    'wdOnlineDicts',
-    'wdHoverSettings',
-    'wdIsEnabled',
-    'wdUserVocabulary',
-    'wdHlSettings',
-    'wdBlackList',
-    'wdWhiteList',
-    'wdEnableTTS',
-    'wdMinimunRank',
+    'dictIdioms',
+    'onlineDicts',
+    'hoverSettings',
+    'enabledMode',
+    'userVocabulary',
+    'highlightSettings',
+    'blackList',
+    'whiteList',
+    'ttsEnabled',
+    'minimunRank',
   ]);
-  const { wdIsEnabled, wdBlackList, wdWhiteList } = result;
+  const { enabledMode, blackList, whiteList } = result;
   const { hostname } = window.location;
   // window.location document.URL document.location.href
-  const verdict = getVerdict(wdIsEnabled, wdBlackList, wdWhiteList, hostname);
+  const verdict = getVerdict(enabledMode, blackList, whiteList, hostname);
   // to change icon
   browser.runtime.sendMessage({ wdmVerdict: verdict });
   if (verdict !== 'highlight') return;
-
-  dictWords = result.dictWords;
-  wordMaxRank = dictWords.length - 1;
-  userVocabulary = result.wdUserVocabulary;
-  wdOnlineDicts = result.wdOnlineDicts;
-  wdEnableTTS = result.wdEnableTTS;
-  wdHoverSettings = result.wdHoverSettings;
-  wdHlSettings = result.wdHlSettings;
-  wdMinimunRank = result.wdMinimunRank;
+  ({
+    dictWords,
+    dictIdioms,
+    userVocabulary,
+    onlineDicts,
+    ttsEnabled,
+    hoverSettings,
+    highlightSettings,
+    minimunRank,
+  } = result);
 
   textNodesUnder(document.body);
   // document.addEventListener('DOMNodeInserted', onNodeInserted, false);

@@ -2,9 +2,9 @@ import browser from 'webextension-polyfill';
 import { syncIfNeeded } from './lib/common_lib';
 
 const listSectionNames = {
-  wdBlackList: 'black-list-section',
-  wdWhiteList: 'white-list-section',
-  wdUserVocabulary: 'vocabulary-section',
+  blackList: 'black-list-section',
+  whiteList: 'white-list-section',
+  userVocabulary: 'vocabulary-section',
 };
 
 const deleteBlackWhiteList = async (event, listName) => {
@@ -18,21 +18,20 @@ const deleteBlackWhiteList = async (event, listName) => {
 
 const deleteUserDictionary = async (event) => {
   const key = event.target.dataset.text;
-  const result = await browser.storage.local.get([
-    'wdUserVocabulary',
-    'wdUserVocabAdded',
-    'wdUserVocabDeleted',
+  const { userVocabulary, userVocabAdded, userVocabDeleted } = await browser.storage.local.get([
+    'userVocabulary',
+    'userVocabAdded',
+    'userVocabDeleted',
   ]);
-  const { wdUserVocabulary, wdUserVocabAdded, wdUserVocabDeleted } = result;
-  const newState = { wdUserVocabulary };
-  delete wdUserVocabulary[key];
-  if (typeof wdUserVocabAdded !== 'undefined') {
-    delete wdUserVocabAdded[key];
-    newState.wdUserVocabAdded = wdUserVocabAdded;
+  const newState = { userVocabulary };
+  delete userVocabulary[key];
+  if (typeof userVocabAdded !== 'undefined') {
+    delete userVocabAdded[key];
+    newState.userVocabAdded = userVocabAdded;
   }
-  if (typeof wdUserVocabDeleted !== 'undefined') {
-    wdUserVocabDeleted[key] = 1;
-    newState.wdUserVocabDeleted = wdUserVocabDeleted;
+  if (typeof userVocabDeleted !== 'undefined') {
+    userVocabDeleted[key] = 1;
+    newState.userVocabDeleted = userVocabDeleted;
   }
   await browser.storage.local.set(newState);
   syncIfNeeded();
@@ -52,7 +51,7 @@ const createButton = (listName, text) => {
   deleteButtonElement.src = '../images/delete.png';
   deleteButtonElement.type = 'image';
   deleteButtonElement.dataset.text = text;
-  if (listName === 'wdUserVocabulary') {
+  if (listName === 'userVocabulary') {
     deleteButtonElement.addEventListener('click', (event) => {
       deleteUserDictionary(event);
     });
@@ -88,11 +87,11 @@ const processDisplay = async () => {
   // "data-list-name" attribute and renaming all 3 tags to "userListSection"
   let listName;
   if (document.getElementById('black-list-section')) {
-    listName = 'wdBlackList';
+    listName = 'blackList';
   } else if (document.getElementById('white-list-section')) {
-    listName = 'wdWhiteList';
+    listName = 'whiteList';
   } else {
-    listName = 'wdUserVocabulary';
+    listName = 'userVocabulary';
   }
 
   const result = await browser.storage.local.get([listName]);

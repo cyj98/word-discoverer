@@ -5,7 +5,6 @@
       body {
         background-color: rgb(255, 248, 220);
       }
-      /* fieldset { */
       .section-block {
         background-color: orange;
         padding: 8px;
@@ -147,9 +146,9 @@
       #words-block {
         margin: 4px 18px;
       }
-      /* #idiomsBlock {
+      #idioms-block {
         margin: 4px 18px;
-    } */
+      }
       #debug-control {
         display: none;
         margin: 4px 18px;
@@ -218,13 +217,11 @@
     <!--pronunciation section-->
     <!-- id="adjust-pronunciation-section" -->
     <div class="section-block">
-      <!-- <fieldset> -->
       <div class="small-header">Adjust Pronunciation</div>
       <div style="display: flex; align-items: center;">
         <input type="radio" name="pronunciation" id="pronunciation-enabled" />
         <label for="pronunciation" style="margin-left: 2px;">Enable Auto Pronunciation</label>
       </div>
-      <!-- </fieldset> -->
     </div>
     <!-- id="adjust-bubble-section" -->
     <div class="section-block">
@@ -268,11 +265,9 @@
           </li>
         </ul>
       </form>
-      <!-- </fieldset> -->
     </div>
     <!-- id="adjust-online-dicts-section" -->
     <div class="section-block">
-      <!-- <fieldset> -->
       <div class="small-header">__MSG_adjustOnlineDicts__</div>
       <div>
         <span class="dict-name-header">__MSG_dictNameHeader__</span
@@ -288,11 +283,9 @@
         ><button class="img-button" id="add-dict"><img src="../images/add.png" /></button>
       </div>
       <button class="long-button" id="default-dicts">__MSG_restoreDefaults__</button>
-      <!-- </fieldset> -->
     </div>
     <!-- id="adjust-section" -->
     <div class="section-block">
-      <!-- <fieldset> -->
       <span class="small-header">__MSG_adjustColorsHeader__</span><br />
       <br />
       <input type="checkbox" class="checkbox" id="words-enabled" /><span class="cb-header-label"
@@ -378,34 +371,85 @@
       <!-- <br> -->
       <!-- <br> -->
 
-      <!-- <input type="checkbox" class="checkbox" id="idiomsEnabled"><span class="cb-header-label">__MSG_enableIdiomsLabel__</span><br> -->
-      <!-- <div id="idiomsBlock">
-        <input type="checkbox" class="checkbox" id="idiomsBold"><span class="cb-label">__MSG_useBold__</span><br>
-        <input type="checkbox" class="checkbox" id="idiomsColor"><span class="cb-label">__MSG_useText__</span><br>
-        <div id="icRadioBlock" class="radio-block">
+      <input type="checkbox" class="checkbox" id="idioms-enabled" /><span class="cb-header-label"
+        >__MSG_enableIdiomsLabel__</span
+      ><br />
+      <div id="idioms-block">
+        <input type="checkbox" class="checkbox" id="idioms-bold" /><span class="cb-label"
+          >__MSG_useBold__</span
+        ><br />
+        <input type="checkbox" class="checkbox" id="idioms-color" /><span class="cb-label"
+          >__MSG_useText__</span
+        ><br />
+        <div id="ic-radio-block" class="radio-block">
           <form>
-          <input type="radio" name="idiomColor" id="ic1"><label for="ic1" style="color:red; background-color:red">___</label>
-          <input type="radio" name="idiomColor" id="ic2"><label for="ic2" style="color:green; background-color:green">___</label>
-          <input type="radio" name="idiomColor" id="ic3"><label for="ic3" style="color:blue; background-color:blue">___</label>
-          <input type="radio" name="idiomColor" id="ic4"><label for="ic4" style="color:yellow; background-color:yellow">___</label>
-          <input type="radio" name="idiomColor" id="ic5"><label for="ic5" style="color:black; background-color:black">___</label>
+            <input type="radio" name="idiomColor" id="ic1" /><label
+              for="ic1"
+              style="color: red; background-color: red;"
+              >___</label
+            >
+            <input type="radio" name="idiomColor" id="ic2" /><label
+              for="ic2"
+              style="color: green; background-color: green;"
+              >___</label
+            >
+            <input type="radio" name="idiomColor" id="ic3" /><label
+              for="ic3"
+              style="color: blue; background-color: blue;"
+              >___</label
+            >
+            <input type="radio" name="idiomColor" id="ic4" /><label
+              for="ic4"
+              style="color: yellow; background-color: yellow;"
+              >___</label
+            >
+            <input type="radio" name="idiomColor" id="ic5" /><label
+              for="ic5"
+              style="color: black; background-color: black;"
+              >___</label
+            >
           </form>
         </div>
-        <input type="checkbox" class="checkbox" id="idiomsBackground"><span class="cb-label">__MSG_useBackground__</span><br>
-        <div id="ibRadioBlock" class="radio-block">
+        <input type="checkbox" class="checkbox" id="idioms-background" /><span class="cb-label"
+          >__MSG_useBackground__</span
+        ><br />
+        <div id="ib-radio-block" class="radio-block">
           <form>
-          <input type="radio" name="idiomBackground" id="ib1"><label for="ib1" style="color:#fff8dc; background-color:#fff8dc">___</label>
-          <input type="radio" name="idiomBackground" id="ib2"><label for="ib2" style="color:#d2d2ff; background-color:#d2d2ff">___</label>
-          <input type="radio" name="idiomBackground" id="ib3"><label for="ib3" style="color:#d2ffd2; background-color:#d2ffd2">___</label>
-          <input type="radio" name="idiomBackground" id="ib4"><label for="ib4" style="color:#c8ffff; background-color:#c8ffff">___</label>
-          <input type="radio" name="idiomBackground" id="ib5"><label for="ib5" style="color:#ffffff; background-color:#ffffff">___</label>
+            <input type="radio" name="idiomBackground" id="ib1" /><label
+              for="ib1"
+              style="color: #fff8dc; background-color: #fff8dc;"
+              >___</label
+            >
+            <input type="radio" name="idiomBackground" id="ib2" /><label
+              for="ib2"
+              style="color: #d2d2ff; background-color: #d2d2ff;"
+              >___</label
+            >
+            <input type="radio" name="idiomBackground" id="ib3" /><label
+              for="ib3"
+              style="color: #d2ffd2; background-color: #d2ffd2;"
+              >___</label
+            >
+            <input type="radio" name="idiomBackground" id="ib4" /><label
+              for="ib4"
+              style="color: #c8ffff; background-color: #c8ffff;"
+              >___</label
+            >
+            <input type="radio" name="idiomBackground" id="ib5" /><label
+              for="ib5"
+              style="color: #ffffff; background-color: #ffffff;"
+              >___</label
+            >
           </form>
         </div>
-        <br>
-        <br>
-        <span class="hl-example">Example of <span id="iql"></span><span id="idiomHlText">highlighted English</span><span id="iqr"></span> expression.</span><br>
-        <br>
-      </div> -->
+        <br />
+        <br />
+        <span class="hl-example"
+          >Example of <span id="iql"></span><span id="idiom-hl-text">highlighted English</span
+          ><span id="iqr"></span> expression.</span
+        ><br />
+        <br />
+      </div>
       <button class="long-button" id="save-visuals">__MSG_saveVisuals__</button>
     </div>
   </body>
