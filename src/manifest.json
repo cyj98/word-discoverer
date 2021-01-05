@@ -28,7 +28,6 @@
     "client_id": "516018828037-b53oqkr5m5bfjdae8mhu426ipe76bggn.apps.googleusercontent.com",
     "scopes": ["https://www.googleapis.com/auth/drive.file"]
   },
-  "permissions": ["contextMenus", "storage", "activeTab", "identity"],
-  "version": "0.1.2",
-  "web_accessible_resources": ["data/frequencylist.csv"]
+  "permissions": ["contextMenus", "storage", "activeTab", "identity", "unlimitedStorage"],
+  "version": "0.1.2"
 }

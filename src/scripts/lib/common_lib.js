@@ -11,15 +11,18 @@ export const requestUnhighlight = async (lemma) => {
 // return after;
 // }
 
+// TODO: check usage
 export const syncIfNeeded = async () => {
-  const reqKeys = ['wdLastSync', 'wdGdSyncEnabled', 'wdLastSyncError'];
-  const result = await browser.storage.local.get(reqKeys);
-  const { wdLastSync, wdGdSyncEnabled, wdLastSyncError } = result;
-  if (!wdGdSyncEnabled || wdLastSyncError !== null) {
+  const { lastSyncTime, syncEnabled, lastSyncError } = await browser.storage.local.get([
+    'lastSyncTime',
+    'syncEnabled',
+    'lastSyncError',
+  ]);
+  if (!syncEnabled || lastSyncError !== null) {
     return;
   }
   const curDate = new Date();
-  const minsPassed = (curDate.getTime() - wdLastSync) / (60 * 1000);
+  const minsPassed = (curDate.getTime() - lastSyncTime) / (60 * 1000);
   const syncPeriodMins = 30;
   if (minsPassed >= syncPeriodMins) {
     browser.runtime.sendMessage({
@@ -44,66 +47,57 @@ export const readFile = (_path) =>
       });
   });
 
-export const processData = (allText) => {
-  const allTextLines = allText.split(/\r\n|\n/);
-  const headers = allTextLines[0].split(',');
-  const dictWords = {};
-
-  for (let i = 1; i < allTextLines.length; i += 1) {
-    const data = allTextLines[i].split(',');
-    // console.log(allTextLines[i], data);
-    if (data.length === headers.length) {
-      dictWords[data[1]] = { [headers[0]]: data[0], [headers[2]]: data[2] };
-    }
-  }
-  return dictWords;
-};
-
-// TODO: check should I assign to argument
 export const addLexeme = async (lexemeOld, resultHandler) => {
-  const reqKeys = ['wdUserVocabulary', 'wdUserVocabAdded', 'wdUserVocabDeleted'];
-  const result = await browser.storage.local.get(reqKeys);
-  // var dict_idioms = result.wd_idioms;
-  const { wdUserVocabulary, wdUserVocabAdded, wdUserVocabDeleted } = result;
+  const {
+    dictWords,
+    dictIdioms,
+    userVocabulary,
+    userVocabAdded,
+    userVocabDeleted,
+  } = await browser.storage.local.get([
+    'userVocabulary',
+    'userVocabAdded',
+    'userVocabDeleted',
+    'dictWords',
+    'dictIdioms',
+  ]);
   if (lexemeOld.length > 100) {
     resultHandler('bad', undefined);
-    return;
+    return false;
   }
-  // lexeme = lexeme.toLowerCase();
   const lexeme = lexemeOld.trim();
   if (!lexeme) {
     resultHandler('bad', undefined);
-    return;
+    return false;
   }
 
-  let key = lexeme;
-  const frequencylist = browser.runtime.getURL('../data/frequencylist.csv');
-  const text = await readFile(frequencylist);
-  const dictWords = processData(text);
   const wordFound = dictWords[lexeme];
-  if (wordFound) {
-    [key] = wordFound;
+  const idiomFound = dictIdioms[lexeme];
+  if (!wordFound && !idiomFound) {
+    resultHandler('bad', lexeme);
+    return false;
   }
-  if (Object.prototype.hasOwnProperty.call(wdUserVocabulary, key)) {
-    resultHandler('exists', key);
-    return;
+  if (Object.prototype.hasOwnProperty.call(userVocabulary, lexeme)) {
+    resultHandler('exists', lexeme);
+    return false;
   }
 
-  const newState = { wdUserVocabulary };
+  const newState = { userVocabulary };
 
-  wdUserVocabulary[key] = 1;
-  if (typeof wdUserVocabAdded !== 'undefined') {
-    wdUserVocabAdded[key] = 1;
-    newState.wdUserVocabAdded = wdUserVocabAdded;
+  userVocabulary[lexeme] = 1;
+  if (typeof userVocabAdded !== 'undefined') {
+    userVocabAdded[lexeme] = 1;
+    newState.userVocabAdded = userVocabAdded;
   }
-  if (typeof wdUserVocabDeleted !== 'undefined') {
-    delete wdUserVocabDeleted[key];
-    newState.wdUserVocabDeleted = wdUserVocabDeleted;
+  if (typeof userVocabDeleted !== 'undefined') {
+    delete userVocabDeleted[lexeme];
+    newState.userVocabDeleted = userVocabDeleted;
   }
 
   await browser.storage.local.set(newState);
   syncIfNeeded();
-  resultHandler('ok', key);
+  resultHandler('ok', lexeme);
+  return true;
 };
 
 export const makeHlStyle = (hlParams) => {

@@ -1,20 +1,19 @@
 const path = require('path');
 const TerserPlugin = require('terser-webpack-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
-// const ExtensionReloader = require('webpack-extension-reloader');
+const ExtensionReloader = require('webpack-extension-reloader');
 
 module.exports = (_, argv) => {
+  const entryList = ['background', 'black_white', 'content_script', 'import', 'options', 'popup'];
+  const entry = {};
+  entryList.forEach((entryItem) => {
+    entry[entryItem] = `./scripts/${entryItem}.js`;
+  });
+
   const config = {
     mode: argv.mode ? argv.mode : 'development',
     context: path.resolve(__dirname, 'src'),
-    entry: {
-      background: './scripts/background.js',
-      black_white: './scripts/black_white.js',
-      content_script: './scripts/content_script.js',
-      import: './scripts/import.js',
-      options: './scripts/options.js',
-      popup: './scripts/popup.js',
-    },
+    entry,
     output: {
       filename: './scripts/[name].js',
       path: path.resolve(__dirname, 'dist-chrome'),
@@ -36,16 +35,15 @@ module.exports = (_, argv) => {
         'styles/*',
         'manifest.json',
       ]),
-      // new ExtensionReloader({
-      //   reloadPage: true,
-      //   entries: {
-      //     contentScript: ['scripts/content_script.js'],
-      //     background: 'scripts/background.js',
-      //     popup: 'html/popup.thlm',
-      //     options: 'html/options.thml',
-      //     // extensionPage: ['popup', 'options'],
-      //   },
-      // }),
+      new ExtensionReloader({
+        port: 9091,
+        reloadPage: true,
+        entries: {
+          contentScript: 'content_script',
+          background: 'background',
+          extensionPage: 'popup',
+        },
+      }),
     ],
   };
   if (config.mode === 'production') {

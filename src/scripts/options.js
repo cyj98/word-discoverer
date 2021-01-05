@@ -4,41 +4,40 @@ import { saveAs } from 'file-saver';
 import { makeHlStyle, localizeHtmlPage } from './lib/common_lib';
 import { initContextMenus, makeDefaultOnlineDicts } from './lib/context_menu_lib';
 
-let wdHlSettings = null;
-let wdHoverSettings = null;
-let wdOnlineDicts = null;
-let wdEnableTTS = false;
+let highlightSettings = null;
+let hoverSettings = null;
+let onlineDicts = null;
+let ttsEnabled = false;
 
 const wcRbIds = ['wc1', 'wc2', 'wc3', 'wc4', 'wc5'];
-// var ic_rb_ids = ['ic1', 'ic2', 'ic3', 'ic4', 'ic5'];
+const icRbIds = ['ic1', 'ic2', 'ic3', 'ic4', 'ic5'];
 const wbRbIds = ['wb1', 'wb2', 'wb3', 'wb4', 'wb5'];
-// var ib_rb_ids = ['ib1', 'ib2', 'ib3', 'ib4', 'ib5'];
+const ibRbIds = ['ib1', 'ib2', 'ib3', 'ib4', 'ib5'];
 
 const hoverPopupTypes = ['never', 'key', 'always'];
 const targetTypes = ['hl', 'ow'];
 
 const displaySyncInterface = async () => {
-  const result = await browser.storage.local.get([
-    'wdGdSyncEnabled',
-    'wdLastSyncError',
-    'wdLastSync',
+  const { lastSyncError, syncEnabled, lastSyncTime } = await browser.storage.local.get([
+    'syncEnabled',
+    'lastSyncError',
+    'lastSyncTime',
   ]);
-  const { wdLastSyncError, wdGdSyncEnabled, wdLastSync } = result;
-  if (!wdGdSyncEnabled) {
+  if (!syncEnabled) {
     document.getElementById('gd-stop-sync-button').style.display = 'none';
     document.getElementById('sync-status-feedback').style.display = 'none';
     return;
   }
   document.getElementById('gd-stop-sync-button').style.display = 'inline-block';
   document.getElementById('sync-status-feedback').style.display = 'inline';
-  if (wdLastSyncError != null) {
-    document.getElementById('sync-status-feedback').textContent = `Error: ${wdLastSyncError}`;
+  if (lastSyncError != null) {
+    document.getElementById('sync-status-feedback').textContent = `Error: ${lastSyncError}`;
   } else {
     document.getElementById('sync-status-feedback').textContent = 'Synchronized.';
   }
-  if (typeof wdLastSync !== 'undefined') {
+  if (typeof lastSyncTime !== 'undefined') {
     const curDate = new Date();
-    let secondsPassed = (curDate.getTime() - wdLastSync) / 1000;
+    let secondsPassed = (curDate.getTime() - lastSyncTime) / 1000;
     const pDays = Math.floor(secondsPassed / (3600 * 24));
     secondsPassed %= 3600 * 24;
     const pHours = Math.floor(secondsPassed / 3600);
@@ -64,7 +63,7 @@ const synchronizeNow = async () => {
   });
   document.getElementById('sync-status-feedback').style.display = 'inline';
   document.getElementById('sync-status-feedback').textContent = 'Synchronization started...';
-  await browser.storage.local.set({ wdGdSyncEnabled: true });
+  await browser.storage.local.set({ syncEnabled: true });
   browser.runtime.sendMessage({ wdmRequest: 'gd_sync', interactiveMode: true });
 };
 
@@ -75,7 +74,7 @@ const requestPermissionsAndSync = async () => {
 };
 
 const stopSynchronization = async () => {
-  await browser.storage.local.set({ wdGdSyncEnabled: false });
+  await browser.storage.local.set({ syncEnabled: false });
   displaySyncInterface();
 };
 
@@ -107,8 +106,7 @@ const processSetDbg = async () => {
 };
 
 const processExport = async () => {
-  const result = await browser.storage.local.get(['wdUserVocabulary']);
-  const userVocabulary = result.wdUserVocabulary;
+  const { userVocabulary } = await browser.storage.local.get(['userVocabulary']);
   const keys = [];
   // for (const key in user_vocabulary) {
   Object.keys(userVocabulary).forEach((key) => {
@@ -125,7 +123,7 @@ const processExport = async () => {
 
 const processImport = () => {
   browser.tabs.create({
-    url: browser.extension.getURL('../html/import.html'),
+    url: browser.runtime.getURL('../html/import.html'),
   });
 };
 
@@ -151,7 +149,7 @@ const processTestOldDict = (e) => {
   const btnId = button.id;
   if (!btnId.startsWith('test-dict-btn_')) return;
   const btnNo = parseInt(btnId.split('_')[1], 10);
-  const url = `${wdOnlineDicts[btnNo].url}test`;
+  const url = `${onlineDicts[btnNo].url}test`;
   browser.tabs.create({ url });
 };
 
@@ -160,9 +158,9 @@ const processDeleteOldDict = (event) => {
   const btnId = button.id;
   if (!btnId.startsWith('del-dict-btn_')) return;
   const btnNo = parseInt(btnId.split('_')[1], 10);
-  wdOnlineDicts.splice(btnNo, 1);
-  browser.storage.local.set({ wdOnlineDicts });
-  initContextMenus(wdOnlineDicts);
+  onlineDicts.splice(btnNo, 1);
+  browser.storage.local.set({ onlineDicts });
+  initContextMenus(onlineDicts);
   event.target.parentElement.remove();
   // showUserDicts();
 };
@@ -172,7 +170,7 @@ const showUserDicts = () => {
   while (dictsBlock.firstChild) {
     dictsBlock.removeChild(dictsBlock.firstChild);
   }
-  const dictPairs = wdOnlineDicts;
+  const dictPairs = onlineDicts;
   for (let i = 0; i < dictPairs.length; i += 1) {
     const dictBlock = document.createElement('div');
     dictBlock.className = 'dict-block';
@@ -203,7 +201,6 @@ const showUserDicts = () => {
     deleteButton.addEventListener('click', processDeleteOldDict);
     dictBlock.appendChild(deleteButton);
 
-    // dictBlock.appendChild(document.createElement('br'));
     dictsBlock.appendChild(dictBlock);
   }
 };
@@ -214,9 +211,9 @@ const processAddDict = () => {
   dictName = dictName.trim();
   dictUrl = dictUrl.trim();
   if (!dictName || !dictUrl) return;
-  wdOnlineDicts.push({ title: dictName, url: dictUrl });
-  browser.storage.local.set({ wdOnlineDicts });
-  initContextMenus(wdOnlineDicts);
+  onlineDicts.push({ title: dictName, url: dictUrl });
+  browser.storage.local.set({ onlineDicts });
+  initContextMenus(onlineDicts);
   showUserDicts();
   document.getElementById('add-dict-name').value = '';
   document.getElementById('add-dict-url').value = '';
@@ -231,51 +228,47 @@ const processTestNewDict = () => {
 };
 
 const showInternalState = () => {
-  const wordHlParams = wdHlSettings.wordParams;
-  // var idiom_hl_params = wdHlSettings.idiomParams;
+  const { wordParams, idiomParams } = highlightSettings;
 
-  document.getElementById('words-enabled').checked = wordHlParams.enabled;
-  // document.getElementById("idiomsEnabled").checked = idiom_hl_params.enabled;
-  document.getElementById('words-block').style.display = wordHlParams.enabled ? 'block' : 'none';
-  // document.getElementById("idiomsBlock").style.display =
-  // idiom_hl_params.enabled ? "block" : "none";
+  document.getElementById('words-enabled').checked = wordParams.enabled;
+  document.getElementById('idioms-enabled').checked = idiomParams.enabled;
+  document.getElementById('words-block').style.display = wordParams.enabled ? 'block' : 'none';
+  document.getElementById('idioms-block').style.display = idiomParams.enabled ? 'block' : 'none';
 
-  document.getElementById('words-bold').checked = wordHlParams.bold;
-  // document.getElementById("idiomsBold").checked = idiom_hl_params.bold;
+  document.getElementById('words-bold').checked = wordParams.bold;
+  document.getElementById('idioms-bold').checked = idiomParams.bold;
 
-  document.getElementById('words-background').checked = wordHlParams.useBackground;
-  // document.getElementById("idiomsBackground").checked = idiom_hl_params.useBackground;
+  document.getElementById('words-background').checked = wordParams.useBackground;
+  document.getElementById('idioms-background').checked = idiomParams.useBackground;
 
-  document.getElementById('words-color').checked = wordHlParams.useColor;
-  // document.getElementById("idiomsColor").checked = idiom_hl_params.useColor;
+  document.getElementById('words-color').checked = wordParams.useColor;
+  document.getElementById('idioms-color').checked = idiomParams.useColor;
 
-  document.getElementById('pronunciation-enabled').checked = wdEnableTTS;
+  document.getElementById('pronunciation-enabled').checked = ttsEnabled;
 
-  document.getElementById('wc-radio-block').style.display = wordHlParams.useColor
+  document.getElementById('wc-radio-block').style.display = wordParams.useColor ? 'block' : 'none';
+  showRbStates(wcRbIds, wordParams.color);
+  document.getElementById('ic-radio-block').style.display = idiomParams.useColor ? 'block' : 'none';
+  showRbStates(icRbIds, idiomParams.color);
+  document.getElementById('wb-radio-block').style.display = wordParams.useBackground
     ? 'block'
     : 'none';
-  showRbStates(wcRbIds, wordHlParams.color);
-  // document.getElementById("icRadioBlock").style.display
-  //  = idiom_hl_params.useColor ? "block" : "none";
-  // show_rb_states(ic_rb_ids, idiom_hl_params.color);
-  document.getElementById('wb-radio-block').style.display = wordHlParams.useBackground
+  showRbStates(wbRbIds, wordParams.backgroundColor);
+  document.getElementById('ib-radio-block').style.display = idiomParams.useBackground
     ? 'block'
     : 'none';
-  showRbStates(wbRbIds, wordHlParams.backgroundColor);
-  // document.getElementById("ibRadioBlock").style.display
-  // = idiom_hl_params.useBackground ? "block" : "none";
-  // show_rb_states(ib_rb_ids, idiom_hl_params.backgroundColor);
+  showRbStates(ibRbIds, idiomParams.backgroundColor);
 
   for (let t = 0; t < targetTypes.length; t += 1) {
     const ttype = targetTypes[t];
     for (let i = 0; i < hoverPopupTypes.length; i += 1) {
-      const isHit = hoverPopupTypes[i] === wdHoverSettings[`${ttype}_hover`];
+      const isHit = hoverPopupTypes[i] === hoverSettings[`${ttype}_hover`];
       document.getElementById(`${ttype}b-${hoverPopupTypes[i]}`).checked = isHit;
     }
   }
 
-  highlightExampleText(wordHlParams, 'word-hl-text', 'wql', 'wqr');
-  // highlight_example_text(idiom_hl_params, "idiomHlText", "iql", "iqr");
+  highlightExampleText(wordParams, 'word-hl-text', 'wql', 'wqr');
+  highlightExampleText(idiomParams, 'idiom-hl-text', 'iql', 'iqr');
   showUserDicts();
 };
 
@@ -328,11 +321,11 @@ const hoverRbHandler = () => {
       const paramKey = `${ttype}_hover`;
       const rbElem = document.getElementById(elementId);
       if (rbElem.checked) {
-        wdHoverSettings[paramKey] = hoverPopupTypes[i];
+        hoverSettings[paramKey] = hoverPopupTypes[i];
       }
     }
   }
-  browser.storage.local.set({ wdHoverSettings });
+  browser.storage.local.set({ hoverSettings });
 };
 
 const addHoverRbListeners = () => {
@@ -347,39 +340,37 @@ const addHoverRbListeners = () => {
 const processDisplay = async () => {
   // window.onload = () => {
   const result = await browser.storage.local.get([
-    'wdHlSettings',
-    'wdHoverSettings',
-    'wdOnlineDicts',
-    'wdDeveloperMode',
-    'wdEnableTTS',
+    'highlightSettings',
+    'hoverSettings',
+    'onlineDicts',
+    'developerModeEnabled',
+    'ttsEnabled',
   ]);
   assignBackLabels();
-  wdHlSettings = result.wdHlSettings;
-  wdHoverSettings = result.wdHoverSettings;
-  wdOnlineDicts = result.wdOnlineDicts;
-  wdEnableTTS = result.wdEnableTTS || false;
+  ({ highlightSettings, hoverSettings, onlineDicts, ttsEnabled } = result);
 
-  const { wdDeveloperMode } = result;
+  const { developerModeEnabled } = result;
+  const { wordParams, idiomParams } = highlightSettings;
 
   // TODO fix this monstrosity using this wrapper-function hack:
   // http://stackoverflow.com/questions/7053965/when-using-callbacks-inside-a-loop-in-javascript-is-there-any-way-to-save-a-var
-  handleRbLoop(wcRbIds, wdHlSettings.wordParams, 'color');
-  // handle_rb_loop(ic_rb_ids, wdHlSettings.idiomParams, "color");
-  handleRbLoop(wbRbIds, wdHlSettings.wordParams, 'backgroundColor');
-  // handle_rb_loop(ib_rb_ids, wdHlSettings.idiomParams, "backgroundColor");
+  handleRbLoop(wcRbIds, wordParams, 'color');
+  handleRbLoop(icRbIds, idiomParams, 'color');
+  handleRbLoop(wbRbIds, wordParams, 'backgroundColor');
+  handleRbLoop(ibRbIds, idiomParams, 'backgroundColor');
 
-  addCbEventListener('words-enabled', wdHlSettings.wordParams, 'enabled');
-  // add_cb_event_listener("idiomsEnabled", wdHlSettings.idiomParams, "enabled");
-  addCbEventListener('words-bold', wdHlSettings.wordParams, 'bold');
-  // add_cb_event_listener("idiomsBold", wdHlSettings.idiomParams, "bold");
-  addCbEventListener('words-background', wdHlSettings.wordParams, 'useBackground');
-  // add_cb_event_listener("idiomsBackground", wdHlSettings.idiomParams, "useBackground");
-  addCbEventListener('words-color', wdHlSettings.wordParams, 'useColor');
-  // add_cb_event_listener("idiomsColor", wdHlSettings.idiomParams, "useColor");
+  addCbEventListener('words-enabled', wordParams, 'enabled');
+  addCbEventListener('idioms-enabled', idiomParams, 'enabled');
+  addCbEventListener('words-bold', wordParams, 'bold');
+  addCbEventListener('idioms-bold', idiomParams, 'bold');
+  addCbEventListener('words-background', wordParams, 'useBackground');
+  addCbEventListener('idioms-background', idiomParams, 'useBackground');
+  addCbEventListener('words-color', wordParams, 'useColor');
+  addCbEventListener('idioms-color', idiomParams, 'useColor');
 
   addHoverRbListeners();
 
-  if (wdDeveloperMode) {
+  if (developerModeEnabled) {
     document.getElementById('debug-control').style.display = 'block';
   }
 
@@ -399,24 +390,22 @@ const processDisplay = async () => {
   document.getElementById('add-dict').addEventListener('click', processAddDict);
   document.getElementById('test-new-dict').addEventListener('click', processTestNewDict);
 
-  document.getElementById('more-info-link').href = browser.extension.getURL(
-    '../html/sync_help.html',
-  );
+  document.getElementById('more-info-link').href = browser.runtime.getURL('../html/sync_help.html');
 
   document.getElementById('save-visuals').addEventListener('click', () => {
-    browser.storage.local.set({ wdHlSettings });
+    browser.storage.local.set({ highlightSettings });
   });
 
   document.getElementById('default-dicts').addEventListener('click', () => {
-    wdOnlineDicts = makeDefaultOnlineDicts();
-    browser.storage.local.set({ wdOnlineDicts });
-    initContextMenus(wdOnlineDicts);
+    onlineDicts = makeDefaultOnlineDicts();
+    browser.storage.local.set({ onlineDicts });
+    initContextMenus(onlineDicts);
     showUserDicts();
   });
 
   document.getElementById('pronunciation-enabled').addEventListener('click', (e) => {
-    wdEnableTTS = e.target.checked;
-    browser.storage.local.set({ wdEnableTTS });
+    ttsEnabled = e.target.checked;
+    browser.storage.local.set({ ttsEnabled });
   });
 
   displaySyncInterface();

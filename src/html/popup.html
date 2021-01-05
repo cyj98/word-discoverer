@@ -7,60 +7,40 @@
         min-width: 320px;
         max-width: 320px;
       }
-      fieldset {
+      .section-block {
         background-color: orange;
         padding: 8px;
         border: 0;
+        margin-bottom: 15px;
+      }
+      .rectangle-button {
+        background-color: #4caf50;
+        border: 1px solid white;
+        color: white;
+        padding: 4px 6px;
+        text-decoration: none;
+        font-size: 12px;
+        margin: 4px 2px;
+        transition-duration: 0.4s;
+        cursor: pointer;
+        padding: 4px 6px;
+        display: inline-block;
+      }
+      .rectangle-button:hover {
+        background-color: #3e8e41;
+      }
+      .analyze-button {
+        width: 150px;
       }
       .rate-button {
         width: 60px;
-        background-color: #4caf50; /* Green */
-        border: 1px solid white;
-        color: white;
-        padding: 4px 6px;
-        text-decoration: none;
-        display: inline-block;
-        font-size: 12px;
-        margin: 4px 2px;
-        transition-duration: 0.4s;
-        cursor: pointer;
-      }
-      .rate-button:hover {
-        background-color: #3e8e41;
       }
       .help-button {
         width: 40px;
-        background-color: #4caf50; /* Green */
-        border: 1px solid white;
-        color: white;
-        padding: 4px 2px;
-        text-decoration: none;
-        display: block;
-        font-size: 12px;
-        margin: 4px 2px;
-        font-weight: bold;
-        transition-duration: 0.4s;
-        cursor: pointer;
         float: right;
-      }
-      .help-button :hover {
-        background-color: #3e8e41;
       }
       .vocab-button {
         width: 150px;
-        background-color: #4caf50; /* Green */
-        border: 1px solid white;
-        color: white;
-        padding: 4px 6px;
-        text-decoration: none;
-        display: inline-block;
-        font-size: 12px;
-        margin: 4px 2px;
-        transition-duration: 0.4s;
-        cursor: pointer;
-      }
-      .vocab-button:hover {
-        background-color: #3e8e41;
       }
       .add-button {
         background-color: orange;
@@ -122,7 +102,6 @@
         height: 14px;
         vertical-align: middle;
       }
-
       .page-centered {
         width: 200px;
         position: fixed;
@@ -140,7 +119,7 @@
     <script src="../scripts/popup.js"></script>
   </head>
   <body>
-    <fieldset>
+    <div class="section-block">
       <span class="rate-info" id="mode-header"></span>
       <br />
       <br />
@@ -150,20 +129,19 @@
         ><a href="example.com" target="_blank" id="add-to-list-label"></a>
       </span>
       <br />
-      <button class="vocab-button" id="change-mode">
+      <button class="rectangle-button vocab-button" id="change-mode">
         __MSG_switchModeLabel__
       </button>
-    </fieldset>
-    <br />
-    <fieldset>
+    </div>
+    <div class="section-block">
       <div class="rate-info">
         __MSG_rateInfo1__
         <span class="indicator" id="count-indicator">n/a</span>
         <!-- (<span class="indicator" id="rateIndicator1">n/a</span>)  -->
         <!-- __MSG_rateInfo2__ -->
       </div>
-      <button class="rate-button" id="rank-m1000">-1000</button>
-      <button class="rate-button" id="rank-m100">-100</button>
+      <button class="rectangle-button rate-button" id="rank-m1000">-1000</button>
+      <button class="rectangle-button rate-button" id="rank-m100">-100</button>
       <!-- <div class="rankInfo"> -->
       <!-- __MSG_rateInfo1__ -->
       <!-- <span class="indicator" id="count-indicator">n/a</span> -->
@@ -171,17 +149,16 @@
       <!-- __MSG_rateInfo2__ -->
       <!-- </div> -->
       <!-- <div style="display: inline-block" id="rateIndicator2">n/a</div> -->
-      <button class="rate-button" id="rank-p100">+100</button>
-      <button class="rate-button" id="rank-p1000">+1000</button>
-    </fieldset>
-    <br />
-    <fieldset>
+      <button class="rectangle-button rate-button" id="rank-p100">+100</button>
+      <button class="rectangle-button rate-button" id="rank-p1000">+1000</button>
+    </div>
+    <div class="section-block">
       <div class="rate-info">
         __MSG_vocabSizeInfo1__
         <span class="indicator" id="vocab-indicator">n/a</span>
         __MSG_vocabSizeInfo2__
       </div>
-      <button class="vocab-button" id="show-vocab">
+      <button class="rectangle-button vocab-button" id="show-vocab">
         __MSG_showVocab__
       </button>
       <br />
@@ -193,11 +170,10 @@
       </button>
       <br />
       <span class="rate-info" id="add-op-result"></span>
-    </fieldset>
-    <br />
-    <fieldset>
-      <button class="vocab-button" id="adjust">__MSG_adjust__</button>
-      <button class="help-button" id="get-help">?</button>
-    </fieldset>
+    </div>
+    <div class="section-block">
+      <button class="rectangle-button vocab-button" id="adjust">__MSG_adjust__</button>
+      <button class="rectangle-button help-button" id="get-help">?</button>
+    </div>
   </body>
 </html>

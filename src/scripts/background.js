@@ -1,5 +1,5 @@
 import browser from 'webextension-polyfill';
-import { readFile, processData } from './lib/common_lib';
+import { readFile } from './lib/common_lib';
 import { initContextMenus, makeDefaultOnlineDicts } from './lib/context_menu_lib';
 
 /* global gapi */
@@ -7,7 +7,7 @@ let gapiLoaded = false;
 let gapiInited = false;
 
 const reportSyncFailure = async (errorMsg) => {
-  await browser.storage.local.set({ wdLastSyncError: errorMsg });
+  await browser.storage.local.set({ lastSyncError: errorMsg });
   browser.runtime.sendMessage({ sync_feedback: 1 });
 };
 
@@ -183,11 +183,11 @@ const applyCloudVocab = async (entries) => {
   const syncDate = new Date();
   const syncTime = syncDate.getTime();
   const newState = {
-    wdLastSyncError: null,
-    wdUserVocabulary: entries,
-    wdUserVocabAdded: {},
-    wdUserVocabDeleted: {},
-    wdLastSync: syncTime,
+    lastSyncError: null,
+    userVocabulary: entries,
+    userVocabAdded: {},
+    userVocabDeleted: {},
+    lastSyncTime: syncTime,
   };
   await browser.storage.local.set(newState);
   browser.runtime.sendMessage({ sync_feedback: 1 });
@@ -247,7 +247,7 @@ const backupVocabulary = (dirId, vocab, successCb) => {
 };
 
 const performFullSync = (vocab) => {
-  const dirName = 'English Highlighter Sync';
+  const dirName = 'Highlighter Sync';
   const dirQuery = `name = '${dirName}' and trashed = false and appProperties has { key='wdfile' and value='1' }`;
   const backupAndSyncVocabulary = (dirId) => {
     const syncVocabularyWrap = () => {
@@ -262,29 +262,26 @@ const performFullSync = (vocab) => {
 };
 
 const syncUserVocabularies = async () => {
-  const result = await browser.storage.local.get([
-    'wdUserVocabulary',
-    'wdUserVocabAdded',
-    'wdUserVocabDeleted',
+  let { userVocabulary, userVocabAdded, userVocabDeleted } = await browser.storage.local.get([
+    'userVocabulary',
+    'userVocabAdded',
+    'userVocabDeleted',
   ]);
-  let { wdUserVocabulary } = result;
-  let { wdUserVocabAdded } = result;
-  let { wdUserVocabDeleted } = result;
-  if (typeof wdUserVocabulary === 'undefined') {
-    wdUserVocabulary = {};
+  if (typeof userVocabulary === 'undefined') {
+    userVocabulary = {};
   }
-  if (typeof wdUserVocabAdded === 'undefined') {
-    // wdUserVocabAdded = Object.assign({}, wdUserVocabulary);
-    wdUserVocabAdded = { ...wdUserVocabulary };
+  if (typeof userVocabAdded === 'undefined') {
+    // userVocabAdded = Object.assign({}, userVocabulary);
+    userVocabAdded = { ...userVocabulary };
   }
-  if (typeof wdUserVocabDeleted === 'undefined') {
-    wdUserVocabDeleted = {};
+  if (typeof userVocabDeleted === 'undefined') {
+    userVocabDeleted = {};
   }
   const vocab = {
     name: 'english_vocabulary',
-    all: wdUserVocabulary,
-    added: wdUserVocabAdded,
-    deleted: wdUserVocabDeleted,
+    all: userVocabulary,
+    added: userVocabAdded,
+    deleted: userVocabDeleted,
   };
   performFullSync(vocab);
 };
@@ -325,9 +322,8 @@ const loadAndInitGapi = (interactiveAuthorization) => {
   });
 };
 
-// TODO: why set wdLastSyncError: 'Unknown sync problem' }
 const startSyncSequence = async (interactiveAuthorization) => {
-  await browser.storage.local.set({ wdLastSyncError: 'Unknown sync problem' });
+  await browser.storage.local.set({ lastSyncError: 'Unknown sync problem' });
   if (!gapiLoaded) {
     loadAndInitGapi(interactiveAuthorization);
   } else if (!gapiInited) {
@@ -337,105 +333,63 @@ const startSyncSequence = async (interactiveAuthorization) => {
   }
 };
 
-const loadDictionary = async () => {
-  const frequencylistURL = browser.runtime.getURL('../data/frequencylist.csv');
+const processDictWords = (allText) => {
+  const allTextLines = allText.split('\n');
+  const dictWords = {};
+
+  let rank = 0;
+  let prevLemma = null;
+  allTextLines.forEach((allTextLine) => {
+    const [word, lemma, count] = allTextLine.split(' ');
+    if (lemma !== prevLemma) {
+      rank += 1;
+      prevLemma = lemma;
+    }
+    dictWords[word] = { lemma, rank, count };
+  });
+  return dictWords;
+};
+
+const processDictIdioms = (allText) => {
+  const lines = allText.split('\n');
+  const dictIdioms = {};
+
+  for (let lineNumber = 0; lineNumber < lines.length - 1; lineNumber += 1) {
+    const [idiom, originalIdiom] = lines[lineNumber].split('\t');
+    const words = idiom.split(' ');
+    for (let wordNumber = 0; wordNumber < words.length - 1; wordNumber += 1) {
+      const idiomPrefix = words.slice(0, wordNumber + 1).join(' ');
+      if (!dictIdioms[idiomPrefix]) dictIdioms[idiomPrefix] = -1;
+    }
+    dictIdioms[idiom] = originalIdiom;
+  }
+  return dictIdioms;
+};
+
+const loadDictWords = async () => {
+  const frequencylistURL = browser.runtime.getURL('../data/eng_words.txt');
   const frequencylist = await readFile(frequencylistURL);
-  const dictWords = processData(frequencylist);
-  browser.storage.local.set({ dictWords });
+  await browser.storage.local.set({ dictWords: processDictWords(frequencylist) });
+};
+
+const loadDictIdioms = async () => {
+  const idiomsListURL = browser.runtime.getURL('../data/eng_idioms.txt');
+  const idiomsList = await readFile(idiomsListURL);
+  await browser.storage.local.set({ dictIdioms: processDictIdioms(idiomsList) });
 };
 
 const initializeExtension = async () => {
-  loadDictionary();
-  const result = await browser.storage.local.get([
-    'wdHlSettings',
-    'wdHoverSettings',
-    'wdOnlineDicts',
-    'wdIsEnabled',
-    'wdUserVocabulary',
-    'wdBlackList',
-    'wdWhiteList',
-    'wdEnableTTS',
-    'wdMinimunRank',
-  ]);
-
-  let { wdHlSettings, wdHoverSettings } = result;
-  const {
-    wdOnlineDicts,
-    wdEnableTTS,
-    wdIsEnabled,
-    wdUserVocabulary,
-    wdBlackList,
-    wdWhiteList,
-    wdMinimunRank,
-  } = result;
-  if (typeof wdHlSettings === 'undefined') {
-    const wordHlParams = {
-      enabled: true,
-      quoted: false,
-      bold: true,
-      useBackground: false,
-      backgroundColor: 'rgb(255, 248, 220)',
-      useColor: true,
-      color: 'red',
-    };
-    // const idiomHlParams = {
-    //   enabled: true,
-    //   quoted: false,
-    //   bold: true,
-    //   useBackground: false,
-    //   backgroundColor: 'rgb(255, 248, 220)',
-    //   useColor: true,
-    //   color: 'blue',
-    // };
-    wdHlSettings = {
-      wordParams: wordHlParams,
-      // idiomParams: idiomHlParams,
-    };
-    browser.storage.local.set({ wdHlSettings });
-  }
-  if (typeof wdHoverSettings === 'undefined') {
-    wdHoverSettings = {
-      hl_hover: 'always',
-      ow_hover: 'never',
-    };
-    browser.storage.local.set({ wdHoverSettings });
-  }
-  if (typeof wdOnlineDicts === 'undefined') {
-    browser.storage.local.set({ wdOnlineDicts: makeDefaultOnlineDicts() });
-  }
-  initContextMenus(wdOnlineDicts);
-  if (typeof wdEnableTTS === 'undefined') {
-    browser.storage.local.set({ wdEnableTTS: false });
-  }
-  if (typeof wdIsEnabled === 'undefined') {
-    browser.storage.local.set({ wdIsEnabled: true });
-  }
-  if (typeof wdUserVocabulary === 'undefined') {
-    browser.storage.local.set({ wdUserVocabulary: {} });
-  }
-  if (typeof wdBlackList === 'undefined') {
-    browser.storage.local.set({ wdBlackList: {} });
-  }
-  if (typeof wdWhiteList === 'undefined') {
-    browser.storage.local.set({ wdWhiteList: {} });
-  }
-  if (typeof wdMinimunRank === 'undefined') {
-    browser.storage.local.set({ wdMinimunRank: 6000 });
-  }
-
   browser.runtime.onMessage.addListener(async (request, sender) => {
-    if (request.text) {
-      // return
-    } else if (request.wdmVerdict) {
+    if (request.wdmVerdict) {
       if (request.wdmVerdict === 'highlight') {
         // let result;
-        const getResult = await browser.storage.local.get(['wdGdSyncEnabled', 'wdLastSyncError']);
+        const getResult = await browser.storage.local.get(['syncEnabled', 'lastSyncError']);
         await browser.browserAction.setIcon({
           path: '../images/result48.png',
           tabId: sender.tab.id,
         });
-        if (getResult.wdGdSyncEnabled) {
-          if (getResult.wdLastSyncError == null) {
+        if (getResult.syncEnabled) {
+          if (getResult.lastSyncError == null) {
             browser.browserAction.setBadgeText({
               text: 'sync',
               tabId: sender.tab.id,
@@ -473,6 +427,93 @@ const initializeExtension = async () => {
       startSyncSequence(request.interactiveMode);
     }
   });
+
+  const result = await browser.storage.local.get([
+    'dictWords',
+    'dictIdioms',
+    'highlightSettings',
+    'hoverSettings',
+    'onlineDicts',
+    'enabledMode',
+    'userVocabulary',
+    'blackList',
+    'whiteList',
+    'ttsEnabled',
+    'minimunRank',
+  ]);
+
+  let { highlightSettings, hoverSettings } = result;
+  const {
+    dictWords,
+    dictIdioms,
+    onlineDicts,
+    ttsEnabled,
+    enabledMode,
+    userVocabulary,
+    blackList,
+    whiteList,
+    minimunRank,
+  } = result;
+  if (typeof dictWords === 'undefined') {
+    loadDictWords();
+  }
+  if (typeof dictIdioms === 'undefined') {
+    loadDictIdioms();
+  }
+  if (typeof highlightSettings === 'undefined') {
+    const wordHlParams = {
+      enabled: true,
+      quoted: false,
+      bold: true,
+      useBackground: false,
+      backgroundColor: 'rgb(255, 248, 220)',
+      useColor: true,
+      color: 'red',
+    };
+    const idiomHlParams = {
+      enabled: true,
+      quoted: false,
+      bold: true,
+      useBackground: false,
+      backgroundColor: 'rgb(255, 248, 220)',
+      useColor: true,
+      color: 'blue',
+    };
+    highlightSettings = {
+      wordParams: wordHlParams,
+      idiomParams: idiomHlParams,
+    };
+    browser.storage.local.set({ highlightSettings });
+  }
+  if (typeof hoverSettings === 'undefined') {
+    hoverSettings = {
+      hl_hover: 'always',
+      ow_hover: 'never',
+    };
+    browser.storage.local.set({ hoverSettings });
+  }
+  if (typeof onlineDicts === 'undefined') {
+    browser.storage.local.set({ onlineDicts: makeDefaultOnlineDicts() });
+  }
+  initContextMenus(onlineDicts);
+  if (typeof ttsEnabled === 'undefined') {
+    browser.storage.local.set({ ttsEnabled: false });
+  }
+  if (typeof enabledMode === 'undefined') {
+    browser.storage.local.set({ enabledMode: true });
+  }
+  if (typeof userVocabulary === 'undefined') {
+    browser.storage.local.set({ userVocabulary: {} });
+  }
+  if (typeof blackList === 'undefined') {
+    browser.storage.local.set({ blackList: {} });
+  }
+  if (typeof whiteList === 'undefined') {
+    browser.storage.local.set({ whiteList: {} });
+  }
+  if (typeof minimunRank === 'undefined') {
+    browser.storage.local.set({ minimunRank: 6000 });
+  }
 };
 
 initializeExtension();

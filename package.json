@@ -1,9 +1,9 @@
 {
   "name": "englishhighlight",
-  "version": "0.0.1",
+  "version": "0.2.1",
   "description": "",
   "scripts": {
-    "start": "webpack",
+    "start": "webpack --watch",
     "build": "webpack --mode=production",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -24,9 +24,7 @@
     "webpack-extension-reloader": "^1.1.4"
   },
   "dependencies": {
-    "compromise": "^13.3.2",
     "file-saver": "^2.0.2",
-    "p-queue": "^6.6.2",
     "webextension-polyfill": "^0.6.0"
   },
   "prettier": {
