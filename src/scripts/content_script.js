@@ -120,7 +120,7 @@ const textToHlNodes = (textNode) => {
               break;
             match = idiomPrefix;
             textStyle = makeHlStyle(highlightSettings.idiomParams);
-            className = idiomFound.replace(/ /g, '-');
+            className = idiomFound.replace(/ /g, '*');
             wordNumber = lookAheadWordNumber + 1;
           } else {
             // idiom not found
@@ -149,7 +149,7 @@ const textToHlNodes = (textNode) => {
         wordNumber += 1;
       }
       if (match) {
-        parentElement.classList.add(classNamePrefix);
+        // parentElement.classList.add(classNamePrefix);
         const span = document.createElement('span');
         span.textContent = match;
         span.id = `${classNamePrefix}_${currentNodeId}`;
@@ -184,14 +184,14 @@ const doHighlightText = (textNode) => {
 };
 
 const textNodesUnder = (node) => {
-  const { parentElement } = node;
+  // const { parentElement } = node;
   // crucial downsides: cannot observe normal new added nodes inside parentElement
-  if (
-    !parentElement ||
-    typeof parentElement.className !== 'string' ||
-    parentElement.className.includes(classNamePrefix)
-  )
-    return;
+  // if (
+  //   !parentElement ||
+  //   typeof parentElement.className !== 'string' ||
+  //   parentElement.className.includes(classNamePrefix)
+  // )
+  //   return;
   if (node.nodeType === Node.ELEMENT_NODE) {
     if (node.id && node.id.startsWith(classNamePrefix)) return;
     const nodeList = [];
@@ -209,7 +209,7 @@ const textNodesUnder = (node) => {
 
 const unhighlight = (lemma) => {
   const hlNodes = document.querySelectorAll(
-    `[class^=${classNamePrefix}_${lemma.replace(/ /g, '-')}]`,
+    `[class^=${classNamePrefix}_${lemma.replace(/ /g, '*')}]`,
   );
   hlNodes.forEach((hlNode) => {
     hlNode.removeAttribute('style');
@@ -381,6 +381,12 @@ const getVerdict = (isEnabled, blackList, whiteList, hostname) => {
     return 'highlight';
   }
   return isEnabled ? 'highlight' : 'site is not in "Favorites List"';
+};
+
+const onNodeInserted = (event) => {
+  const { target } = event;
+  if (!target) return;
+  textNodesUnder(target);
 };
 
 const initForPage = async () => {
