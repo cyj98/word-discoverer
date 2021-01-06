@@ -27,15 +27,6 @@ let functionKeyIsPressed = false;
 let renderedNodeId = null;
 let nodeToRenderId = null;
 
-const formatOriginalWord = (word) => {
-  if (!word) return word;
-  // const maxLen = 20;
-  const newWord = word.replace(/\*/g, ' ');
-  return newWord;
-  // if (newWord.length <= maxLen) return newWord;
-  // return `${newWord.slice(0, maxLen)}...`;
-};
-
 const getHeatColorPoint = (freqPercentOld) => {
   let freqPercent = freqPercentOld;
   if (!freqPercent) freqPercent = 0;
@@ -58,6 +49,10 @@ const goodTagsList = [
   'Q',
   'DIV',
   'SPAN',
+  'TABLE',
+  'TBODY',
+  'TR',
+  'TD',
 ];
 
 const goodNodeFilter = (node) => {
@@ -192,7 +187,7 @@ const textNodesUnder = (node) => {
   //   parentElement.className.includes(classNamePrefix)
   // )
   //   return;
-  if (node.nodeType === Node.ELEMENT_NODE) {
+  if (node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.TEXT_NODE) {
     if (node.id && node.id.startsWith(classNamePrefix)) return;
     const nodeList = [];
     const treeWalker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, goodNodeFilter, false);
@@ -202,9 +197,10 @@ const textNodesUnder = (node) => {
       currentNode = treeWalker.nextNode();
     }
     nodeList.forEach((textNode) => doHighlightText(textNode));
-  } else if (node.nodeType === Node.TEXT_NODE) {
-    doHighlightText(node);
   }
+  // else if (node.nodeType === Node.TEXT_NODE) {
+  // doHighlightText(node);
+  // }
 };
 
 const unhighlight = (lemma) => {
@@ -328,7 +324,7 @@ const renderBubble = () => {
   const bubbleText = shadow.getElementById('wd-selection-bubble-text');
   const bubbleFreq = shadow.getElementById('wd-selection-bubble-freq');
   const [, lexeme, rankAndCount] = className.split('_');
-  currentLexeme = formatOriginalWord(lexeme);
+  currentLexeme = lexeme.replace(/\*/g, ' ');
   bubbleText.textContent = currentLexeme;
   if (rankAndCount) {
     bubbleFreq.textContent = rankAndCount;
@@ -383,12 +379,6 @@ const getVerdict = (isEnabled, blackList, whiteList, hostname) => {
   return isEnabled ? 'highlight' : 'site is not in "Favorites List"';
 };
 
-const onNodeInserted = (event) => {
-  const { target } = event;
-  if (!target) return;
-  textNodesUnder(target);
-};
-
 const initForPage = async () => {
   if (!document.body) return;
 
@@ -424,15 +414,14 @@ const initForPage = async () => {
   } = result);
 
   textNodesUnder(document.body);
-  document.addEventListener('DOMNodeInserted', onNodeInserted, false);
-  // const observer = new MutationObserver((mutationsList) => {
-  //   mutationsList.forEach((mutation) => {
-  //     Array.from(mutation.addedNodes).forEach((node) => {
-  //       textNodesUnder(node);
-  //     });
-  //   });
-  // });
-  // observer.observe(document.body, { subtree: true, childList: true });
+  const observer = new MutationObserver((mutationsList) => {
+    mutationsList.forEach((mutation) => {
+      Array.from(mutation.addedNodes).forEach((node) => {
+        textNodesUnder(node);
+      });
+    });
+  });
+  observer.observe(document.body, { subtree: true, childList: true });
 
   browser.runtime.onMessage.addListener((request) => {
     if (request.wdm_unhighlight) {

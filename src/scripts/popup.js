@@ -42,12 +42,6 @@ const displayMode = async () => {
   }
 };
 
-const processAnalyzeText = () => {
-  browser.tabs.create({
-    url: browser.runtime.getURL('../html/analyze_text.html'),
-  });
-};
-
 const processCheckbox = async () => {
   const checkboxElem = document.getElementById('add-to-list');
   const listName = enabledMode ? 'blackList' : 'whiteList';
@@ -153,7 +147,6 @@ const processRateP1000 = () => {
 // }
 
 const initControls = async () => {
-  document.getElementById('analyze-text').addEventListener('click', processAnalyzeText);
   document.getElementById('add-to-list').addEventListener('click', processCheckbox);
   document.getElementById('adjust').addEventListener('click', processAdjust);
   document.getElementById('show-vocab').addEventListener('click', processShow);
